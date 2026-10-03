@@ -56,9 +56,9 @@ El detalle de mensajes, formatos y límites está en [protocol.md](protocol.md).
 
 | Subdominio | Apunta a | Puertos | Por qué así |
 |------------|----------|---------|-------------|
-| `app.chasqui.example` | Cloudflare Pages | 443 | Sitio estático en CDN |
-| `signal.chasqui.example` | Proxy de Cloudflare, luego VM:8443 | 443 hacia el usuario, 8443 en el origen | Cloudflare absorbe ataques y soporta WebSocket; 8443 deja libre el 443 de la VM |
-| `turn.chasqui.example` | Directo a la IP de la VM (sin proxy) | 3478 UDP/TCP, 443 TCP (TLS), UDP 49160-49360 | El proxy de Cloudflare no transporta UDP ni TURN |
+| `app.chaski.me` | Cloudflare Pages | 443 | Sitio estático en CDN |
+| `signal.chaski.me` | Proxy de Cloudflare, luego VM:8443 | 443 hacia el usuario, 8443 en el origen | Cloudflare absorbe ataques y soporta WebSocket; 8443 deja libre el 443 de la VM |
+| `turn.chaski.me` | Directo a la IP de la VM (sin proxy) | 3478 UDP/TCP, 443 TCP (TLS), UDP 49160-49360 | El proxy de Cloudflare no transporta UDP ni TURN |
 
 Además, la VM expone el puerto de gestión de Spring Actuator (9090) solo en `127.0.0.1`.
 

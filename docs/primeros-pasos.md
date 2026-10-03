@@ -1,6 +1,6 @@
 # Primeros pasos (lo que solo puedes hacer tú)
 
-Checklist en orden. Reemplaza `chasqui.example` por tu dominio real en: `infra/docker-compose.yml`, `infra/coturn/turnserver.conf`, `README.md` y las pruebas.
+Checklist en orden. Reemplaza `chaski.me` por tu dominio real en: `infra/docker-compose.yml`, `infra/coturn/turnserver.conf`, `README.md` y las pruebas.
 
 ## 1. Prueba de red en el trabajo
 
