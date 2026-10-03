@@ -43,9 +43,10 @@ public class SignalHandler extends TextWebSocketHandler {
         this.metrics = metrics;
     }
 
-    /** Estado por conexión. */
+    /** Tope para esperar a que el último mensaje salga antes de cerrar un socket. */
     private static final long CLOSE_DRAIN_TIMEOUT_NS = 1_000_000_000L;
 
+    /** Estado por conexión. */
     private static final class ConnState implements PeerChannel {
         final ConcurrentWebSocketSessionDecorator session;
         final String ip;
