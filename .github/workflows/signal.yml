@@ -90,7 +90,7 @@ jobs:
 
       - name: Desplegar por SSH
         if: steps.gate.outputs.enabled == 'true'
-        uses: appleboy/ssh-action@v1.2.0
+        uses: appleboy/ssh-action@v1.2.5
         with:
           host: ${{ secrets.VM_HOST }}
           username: ${{ secrets.VM_USER }}
