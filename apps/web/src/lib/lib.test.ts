@@ -1,0 +1,58 @@
+import { describe, expect, it } from 'vitest';
+import { describeDevice } from './device';
+import { formatSize } from './format';
+import { hasExecutableExtension, sanitizeFilename } from './filename';
+
+const RTLO = String.fromCodePoint(0x202e);
+const LRO = String.fromCodePoint(0x202d);
+const ZW = String.fromCodePoint(0x200b);
+
+describe('sanitizeFilename', () => {
+  it('elimina RTLO y bidi', () => {
+    const out = sanitizeFilename(`factura${RTLO}fdp.exe`);
+    expect(out).toBe('facturafdp.exe');
+    expect(out).not.toContain(RTLO);
+    expect(sanitizeFilename(`a${LRO}b${ZW}c.txt`)).toBe('abc.txt');
+  });
+  it('elimina caracteres de control', () => {
+    expect(sanitizeFilename('a\u0000b\u0007c\nd\u007f.txt')).toBe('abcd.txt');
+  });
+  it('neutraliza recorridos de ruta', () => {
+    expect(sanitizeFilename('../../x')).toBe('x');
+    expect(sanitizeFilename('..\\..\\windows\\system32\\cmd.exe')).toBe('cmd.exe');
+    expect(sanitizeFilename('/etc/passwd')).toBe('passwd');
+    expect(sanitizeFilename('..')).toBe('archivo');
+    expect(sanitizeFilename('')).toBe('archivo');
+    expect(sanitizeFilename('.hidden')).toBe('hidden');
+  });
+  it('limita el largo conservando la extensión', () => {
+    const out = sanitizeFilename('a'.repeat(500) + '.pdf');
+    expect(out.length).toBe(120);
+    expect(out.endsWith('.pdf')).toBe(true);
+  });
+});
+
+describe('extensiones ejecutables', () => {
+  it('detecta', () => {
+    expect(hasExecutableExtension('setup.EXE')).toBe(true);
+    expect(hasExecutableExtension('x.pdf.exe')).toBe(true);
+    expect(hasExecutableExtension('foto.jpg')).toBe(false);
+    expect(hasExecutableExtension('Makefile')).toBe(false);
+  });
+});
+
+describe('formatSize', () => {
+  it('legible', () => {
+    expect(formatSize(0)).toBe('0 B');
+    expect(formatSize(1536)).toBe('1.5 KB');
+    expect(formatSize(5 * 1024 * 1024)).toBe('5.0 MB');
+  });
+});
+
+describe('describeDevice', () => {
+  it('UA típicos', () => {
+    expect(describeDevice('Mozilla/5.0 (Linux; Android 14) AppleWebKit Chrome/120 Mobile Safari/537')).toBe('Android · Chrome');
+    expect(describeDevice('Mozilla/5.0 (Windows NT 10.0) Chrome/120 Edg/120')).toBe('Windows · Edge');
+    expect(describeDevice('Mozilla/5.0 (iPhone; CPU iPhone OS 17) Version/17 Safari/604')).toBe('iOS · Safari');
+  });
+});
