@@ -1,82 +1,84 @@
+import type { ReactNode } from 'react';
 import { AnimatePresence, m } from 'motion/react';
-import { LockSimple, Play } from '@phosphor-icons/react';
+import { LockSimple, PlayCircle } from '@phosphor-icons/react';
 import { QrCode } from '../QrCode';
 import { LogoMark } from '../brand/Logo';
+import { HeroCard } from '../brand/HeroCard';
 import { fast, rise, stagger } from '../motion';
 
-/** PC esperando: el QR manda; todo lo demás es secundario por tamaño. */
+/** Contenido de card pastel al estilo iO: título en negrita arriba, ícono de línea a la derecha. */
+export function CardHead({ title, sub, icon, iconClass = '' }: { title: string; sub?: string; icon: ReactNode; iconClass?: string }) {
+  return (
+    <>
+      <span className="flex items-start justify-between gap-3">
+        <span className="text-[19px] font-semibold leading-tight tracking-[-0.02em]">{title}</span>
+        <span className={iconClass}>{icon}</span>
+      </span>
+      {sub && <span className="text-[15px] text-muted">{sub}</span>}
+    </>
+  );
+}
+
+/** PC esperando: el QR va en la card protagonista; lo demás es secundario por tamaño. */
 export function PairScreen({ shareUrl, onTutorial }: { shareUrl: string | null; onTutorial: () => void }) {
   if (!shareUrl) return <Connecting />;
   return (
-    <m.div variants={stagger} initial="hidden" animate="show" className="grid gap-3 md:grid-cols-12">
-      <m.section
-        variants={rise}
-        className="tile order-2 flex items-center justify-center bg-peach p-5 sm:p-10 md:order-none md:col-span-7 md:min-h-[540px]"
-      >
-        <AnimatePresence mode="wait" initial={false}>
-          <m.div
-            key={shareUrl}
-            initial={{ opacity: 0, scale: 0.96 }}
-            animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0, scale: 0.98 }}
-            transition={fast}
-            className="rounded-md bg-[#fff] p-7"
-          >
-            <QrCode text={shareUrl} className="block h-auto w-[min(58vw,300px)]" />
-          </m.div>
-        </AnimatePresence>
-      </m.section>
-
-      <div className="contents md:col-span-5 md:flex md:flex-col md:justify-between md:gap-3">
-      <m.section variants={rise} className="order-1 flex flex-col gap-6 px-1 pt-2 md:order-none md:px-4 md:pt-8">
-        <h1 className="font-display text-[44px] leading-[1.02] tracking-[-0.02em] sm:text-[64px]">
-          Escanea con
-          <br />
-          tu celular
-        </h1>
-        <p className="inline-flex items-center gap-2.5 text-[15px] font-semibold text-muted">
-          <span className="live-dot text-brand" aria-hidden="true" />
-          Esperando
-        </p>
-      </m.section>
-
-      <m.section variants={rise} className="order-3 grid grid-cols-2 gap-3 md:order-none">
-        <div className="tile flex min-h-[148px] flex-col justify-between bg-mint p-5 text-mint-ink">
-          <LockSimple size={26} weight="bold" aria-hidden="true" />
-          <p className="text-[15px] font-semibold leading-snug">
-            Directo y cifrado.
-            <br />
-            Nada se guarda.
+    <m.div variants={stagger} initial="hidden" animate="show" className="grid gap-4 md:grid-cols-12">
+      <div className="contents md:col-span-5 md:flex md:flex-col md:justify-between md:gap-4">
+        <m.section variants={rise} className="order-1 px-1 pt-2 md:order-none md:pt-10">
+          <h1 className="text-[40px] font-semibold leading-[1.02] tracking-[-0.04em] sm:text-[56px]">Escanea con tu celular</h1>
+          <p className="mt-5 inline-flex h-9 items-center gap-2 rounded-full bg-mint px-4 text-[15px] font-medium text-mint-ink">
+            <span className="live-dot" aria-hidden="true" />
+            Esperando conexión
           </p>
-        </div>
-        <button
-          type="button"
-          onClick={onTutorial}
-          className="tile press group flex min-h-[148px] flex-col justify-between bg-sky p-5 text-left hover:brightness-[0.98]"
-        >
-          <span className="flex size-10 items-center justify-center rounded-full bg-ink text-on-ink transition-transform duration-200 group-hover:scale-105">
-            <Play size={16} weight="fill" aria-hidden="true" />
-          </span>
-          <span className="text-[15px] font-semibold">Cómo funciona</span>
-        </button>
-      </m.section>
+        </m.section>
+
+        <m.section variants={rise} className="order-3 grid grid-cols-2 gap-4 md:order-none">
+          <div className="flex min-h-[150px] flex-col justify-between rounded-lg bg-mint p-5">
+            <CardHead title="Cifrado" sub="Directo, nada se guarda" icon={<LockSimple size={24} />} iconClass="text-mint-ink" />
+          </div>
+          <button
+            type="button"
+            onClick={onTutorial}
+            className="press flex min-h-[150px] flex-col justify-between rounded-lg bg-sky p-5 text-left hover:brightness-[0.98]"
+          >
+            <CardHead title="Cómo funciona" sub="Míralo en 7 s" icon={<PlayCircle size={26} />} />
+          </button>
+        </m.section>
       </div>
+
+      <m.div variants={rise} className="order-2 md:order-none md:col-span-7">
+        <HeroCard className="min-h-[400px] md:min-h-[500px]">
+          <div className="flex h-full min-h-[inherit] items-center justify-center p-6 sm:p-10">
+            <AnimatePresence mode="wait" initial={false}>
+              <m.div
+                key={shareUrl}
+                initial={{ opacity: 0, scale: 0.96 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.98 }}
+                transition={fast}
+                className="rounded-lg bg-[#fff] p-6 sm:p-7"
+              >
+                <QrCode text={shareUrl} className="block h-auto w-[min(58vw,280px)]" />
+              </m.div>
+            </AnimatePresence>
+          </div>
+        </HeroCard>
+      </m.div>
     </m.div>
   );
 }
 
-/** Dispositivo que escaneó: solo hay que esperar un instante. */
+/** Dispositivo que escaneó: el chaski corre mientras se conectan. */
 function Connecting() {
   return (
-    <m.div variants={rise} initial="hidden" animate="show" className="tile flex min-h-[60vh] flex-col items-center justify-center gap-6 bg-surface">
-      <m.span
-        animate={{ scale: [1, 1.08, 1] }}
-        transition={{ duration: 1.4, repeat: Infinity, ease: 'easeInOut' }}
-        className="text-ink"
-      >
-        <LogoMark size={64} />
-      </m.span>
-      <p className="font-display text-[36px] leading-none">Conectando</p>
+    <m.div variants={rise} initial="hidden" animate="show">
+      <HeroCard className="min-h-[62vh]">
+        <div className="flex h-full min-h-[inherit] flex-col items-center justify-center gap-6 p-8">
+          <LogoMark size={96} running className="text-on-hero" />
+          <p className="text-[28px] font-semibold tracking-[-0.03em]">Conectando</p>
+        </div>
+      </HeroCard>
     </m.div>
   );
 }

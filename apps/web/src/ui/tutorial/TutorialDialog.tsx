@@ -31,7 +31,7 @@ export function TutorialDialog({ open, onClose }: { open: boolean; onClose: () =
         <button type="button" className="tut-close" aria-label="Cerrar" onClick={onClose}>
           <X size={20} weight="bold" />
         </button>
-        <h2 id={titleId} className="font-display text-[36px] leading-tight text-ink m-0 mb-5 pr-12">
+        <h2 id={titleId} className="m-0 mb-5 pr-12 text-[32px] font-semibold leading-tight tracking-[-0.035em] text-ink">
           Así de simple
         </h2>
         <TutorialAnimation playing={open} />

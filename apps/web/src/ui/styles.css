@@ -1,10 +1,9 @@
 @import 'tailwindcss';
-@import '@fontsource-variable/manrope';
-@import '@fontsource/instrument-serif/400.css';
+@import '@fontsource-variable/outfit';
 
 /*
-  Sistema de diseño de Chasqui. La regla es la restricción:
-  1 color de marca, 3 pasteles, radios 12/20/28 y dos fuentes. Nada fuera de aquí.
+  Sistema de diseño de Chaski. La regla es la restricción:
+  1 color de marca, 3 pasteles + gris, radios 12/20/28 y una sola fuente. Nada fuera de aquí.
   Los colores por defecto de Tailwind están desactivados a propósito.
 */
 @theme {
@@ -20,12 +19,15 @@
   --color-peach: var(--c-peach);
   --color-mint: var(--c-mint);
   --color-sky: var(--c-sky);
+  --color-mist: var(--c-mist);
+  --color-hero: var(--c-hero);
+  --color-on-hero: var(--c-on-hero);
   --color-mint-ink: var(--c-mint-ink);
   --color-danger: var(--c-danger);
 
   --font-*: initial;
-  --font-display: 'Instrument Serif', ui-serif, Georgia, serif;
-  --font-sans: 'Manrope Variable', ui-sans-serif, system-ui, sans-serif;
+  --font-display: 'Outfit Variable', ui-sans-serif, system-ui, sans-serif;
+  --font-sans: 'Outfit Variable', ui-sans-serif, system-ui, sans-serif;
 
   --radius-*: initial;
   --radius-sm: 12px;
@@ -41,37 +43,47 @@
 
 :root {
   color-scheme: light;
-  --c-paper: #f6f3ed;
+  --c-paper: #ffffff;
   --c-surface: #ffffff;
-  --c-ink: #17150f;
-  --c-ink-soft: #2b2822;
-  --c-muted: #77716a;
-  --c-line: #e8e2d8;
-  --c-brand: #e4572e; /* achiote */
-  --c-on-ink: #fbf9f5;
-  --c-peach: #fbe6da;
-  --c-mint: #dcefe3;
-  --c-sky: #e2ebf6;
-  --c-mint-ink: #1e6b45;
-  --c-danger: #b42318;
+  --c-ink: #111114;
+  --c-ink-soft: #2a2a30;
+  --c-muted: #7a7b85;
+  --c-line: #ececf0;
+  --c-brand: #ff5a36; /* el folder del chaski */
+  --c-on-ink: #ffffff;
+  --c-peach: #ffece4;
+  --c-mint: #e1f3f4; /* aqua */
+  --c-sky: #e7e9f8; /* lavanda */
+  --c-mist: #f1f2f4;
+  --c-hero: #141418;
+  --c-on-hero: #ffffff;
+  --c-mint-ink: #0f6e73;
+  --c-danger: #d92d20;
+  --c-arc: #f8f8fa;
+  --c-blob: #ffd0bf;
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
     color-scheme: dark;
-    --c-paper: #12110e;
-    --c-surface: #1c1a16;
-    --c-ink: #f4f0e8;
-    --c-ink-soft: #e2ddd3;
-    --c-muted: #9c958a;
-    --c-line: #2c2924;
-    --c-brand: #f06a42;
-    --c-on-ink: #17150f;
-    --c-peach: #2e221c;
-    --c-mint: #1a2a21;
-    --c-sky: #1b2330;
-    --c-mint-ink: #7fd1a3;
+    --c-paper: #0e0e11;
+    --c-surface: #17171c;
+    --c-ink: #f4f4f6;
+    --c-ink-soft: #dcdce2;
+    --c-muted: #93949e;
+    --c-line: #26262d;
+    --c-brand: #ff6a48;
+    --c-on-ink: #111114;
+    --c-peach: #2a1c17;
+    --c-mint: #142326;
+    --c-sky: #1c1e2b;
+    --c-mist: #1a1a20;
+    --c-hero: #1d1d24;
+    --c-on-hero: #ffffff;
+    --c-mint-ink: #7fd8dc;
     --c-danger: #ff8a80;
+    --c-arc: #131317;
+    --c-blob: #ffb49c;
   }
 }
 
@@ -82,7 +94,6 @@
   }
   body {
     @apply bg-paper font-sans text-ink antialiased;
-    font-feature-settings: 'tnum' 1;
   }
   ::selection {
     background: var(--c-peach);
@@ -125,24 +136,62 @@
   animation: live 1.8s var(--ease-out) infinite;
 }
 
-/* Logo: el arco se dibuja y el punto (el mensaje) sale disparado. */
-@keyframes logo-arc {
-  from { stroke-dashoffset: 1; }
-  to { stroke-dashoffset: 0; }
+/* Chaski: las cintas del tocado ondean; corriendo, el cuerpo rebota. */
+@keyframes tail-wave {
+  0%, 100% { transform: rotate(0deg); }
+  50% { transform: rotate(-9deg); }
 }
-@keyframes logo-dot {
-  0% { transform: scale(0); }
-  70% { transform: scale(1.25); }
-  100% { transform: scale(1); }
+@keyframes run-bob {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-5%); }
 }
-.logo-arc {
-  stroke-dasharray: 1;
-  animation: logo-arc 700ms var(--ease-out) both;
+.chaski-tail {
+  transform-box: fill-box;
+  transform-origin: 100% 50%;
 }
-.logo-dot {
+.chaski-run .chaski-tail {
+  animation: tail-wave 520ms ease-in-out infinite;
+}
+.chaski-run .chaski-tail + .chaski-tail {
+  animation-delay: -260ms;
+}
+.chaski-run {
+  animation: run-bob 520ms ease-in-out infinite;
+}
+@keyframes chaski-in {
+  from { transform: translateX(-18%); opacity: 0; }
+  to { transform: none; opacity: 1; }
+}
+.chaski-enter {
+  animation: chaski-in 600ms var(--ease-out) both;
+}
+
+/* Formas orgánicas de la card protagonista: derivan lento, sin degradados. */
+@keyframes drift {
+  from { transform: translate(0, 0) rotate(0deg); }
+  to { transform: translate(-3%, 4%) rotate(8deg); }
+}
+.blob {
   transform-box: fill-box;
   transform-origin: center;
-  animation: logo-dot 420ms var(--ease-out) 560ms both;
+  animation: drift 14s ease-in-out infinite alternate;
+}
+.blob + .blob {
+  animation-duration: 18s;
+  animation-direction: alternate-reverse;
+}
+
+/* Arco gris de fondo, como en iO. */
+.page-arc {
+  position: fixed;
+  z-index: -1;
+  top: -62vmax;
+  right: -38vmax;
+  width: 100vmax;
+  height: 100vmax;
+  border-radius: 9999px;
+  background: var(--c-arc);
+  pointer-events: none;
 }
 
 @media (prefers-reduced-motion: reduce) {

@@ -33,7 +33,7 @@ function Pill({ onClick, children, primary = false, label }: { onClick: () => vo
       onClick={onClick}
       aria-label={label}
       className={`press inline-flex h-11 shrink-0 items-center gap-2 rounded-full px-5 text-[15px] font-semibold ${
-        primary ? 'bg-ink text-on-ink' : 'bg-paper text-ink hover:bg-line'
+        primary ? 'bg-ink text-on-ink' : 'bg-surface text-ink'
       }`}
     >
       {children}
@@ -60,7 +60,7 @@ function Row({ item, onCancel }: { item: TransferItem; onCancel: (i: TransferIte
       initial={{ opacity: 0, y: 14, scale: 0.98 }}
       animate={{ opacity: 1, y: 0, scale: 1 }}
       exit={{ opacity: 0, scale: 0.98, transition: { duration: 0.16, ease: EASE } }}
-      className={`rounded-md bg-surface px-5 py-4 ring-1 ring-line ${failed ? 'opacity-60' : ''}`}
+      className={`rounded-lg bg-mist px-5 py-4 ${failed ? 'opacity-60' : ''}`}
     >
       <div className="flex items-center gap-4">
         <span className={incoming ? 'text-brand' : 'text-muted'} aria-label={incoming ? 'Recibido' : 'Enviado'} role="img">
@@ -72,8 +72,8 @@ function Row({ item, onCancel }: { item: TransferItem; onCancel: (i: TransferIte
             <p className="line-clamp-4 whitespace-pre-wrap break-words text-[17px] leading-snug">{item.text}</p>
           ) : (
             <>
-              <p className="truncate text-[16px] font-semibold">{item.name}</p>
-              <p className="mt-0.5 flex items-center gap-1.5 text-[13px] font-medium text-muted">
+              <p className="truncate text-[17px] font-semibold tracking-[-0.01em]">{item.name}</p>
+              <p className="mt-0.5 flex items-center gap-1.5 text-[14px] text-muted">
                 {item.executable && (
                   <span className="inline-flex items-center gap-1 text-danger" title="Archivo ejecutable: ábrelo solo si confías en quien lo envió">
                     <Warning size={14} weight="bold" aria-hidden="true" /> Ejecutable ·
@@ -96,7 +96,7 @@ function Row({ item, onCancel }: { item: TransferItem; onCancel: (i: TransferIte
             type="button"
             onClick={() => onCancel(item)}
             aria-label="Cancelar"
-            className="press flex size-10 shrink-0 items-center justify-center rounded-full text-muted hover:bg-paper hover:text-ink"
+            className="press flex size-10 shrink-0 items-center justify-center rounded-full text-muted hover:bg-surface hover:text-ink"
           >
             <X size={18} weight="bold" />
           </button>
@@ -119,7 +119,7 @@ function Row({ item, onCancel }: { item: TransferItem; onCancel: (i: TransferIte
       </div>
 
       {item.kind === 'file' && running && (
-        <div className="mt-3 h-1 overflow-hidden rounded-full bg-paper" role="progressbar" aria-valuenow={Math.round(pct)} aria-valuemin={0} aria-valuemax={100}>
+        <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-line" role="progressbar" aria-valuenow={Math.round(pct)} aria-valuemin={0} aria-valuemax={100}>
           <m.div className="h-full rounded-full bg-brand" animate={{ width: `${pct}%` }} transition={{ duration: 0.2, ease: 'linear' }} />
         </div>
       )}

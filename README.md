@@ -1,4 +1,4 @@
-# Chasqui
+# Chaski
 
 [![web](https://github.com/1juandaniel0/chasqui/actions/workflows/web.yml/badge.svg)](https://github.com/1juandaniel0/chasqui/actions/workflows/web.yml)
 [![signal](https://github.com/1juandaniel0/chasqui/actions/workflows/signal.yml/badge.svg)](https://github.com/1juandaniel0/chasqui/actions/workflows/signal.yml)

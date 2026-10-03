@@ -113,7 +113,20 @@ export function TutorialAnimation({ playing = true }: { playing?: boolean }) {
         </g>
 
         {/* Mensaje en camino */}
-        <circle r={7} fill="var(--c-brand)" className="tut-dot" style={{ offsetPath: `path("${ARC}")` }} />
+        {/* El chaski corre con el archivo del celular a la PC (mirando a la izquierda). */}
+        <g className="tut-dot" style={{ offsetPath: `path("${ARC}")` }}>
+          <g className="tut-runner">
+            <g transform="scale(-0.62 0.62) translate(-32 -40)" strokeLinecap="round" strokeLinejoin="round" fill="none">
+              <path d="M27 7.5 L15 4.5 M27 10.5 L17 12.5" stroke="var(--c-brand)" strokeWidth={3.6} />
+              <circle cx={33} cy={9} r={6} fill="var(--c-ink)" />
+              <path d="M31 20 L16 56 M22 36 L41 24 M22 36 L40 54" stroke="var(--c-ink)" strokeWidth={8} />
+              <path
+                d="M42 15h6l2.2 2.5H58a2.5 2.5 0 0 1 2.5 2.5v9a2.5 2.5 0 0 1-2.5 2.5H42a2.5 2.5 0 0 1-2.5-2.5V17.5A2.5 2.5 0 0 1 42 15z"
+                fill="var(--c-brand)"
+              />
+            </g>
+          </g>
+        </g>
       </svg>
 
       <ol className="tut-steps">

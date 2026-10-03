@@ -51,18 +51,19 @@ export function App() {
 
   return (
     <div className="mx-auto flex min-h-dvh max-w-[1120px] flex-col px-4 sm:px-6" {...dragProps}>
+      <div className="page-arc" aria-hidden="true" />
       <header className="flex h-20 items-center justify-between gap-4">
-        <Logo animated />
+        <Logo />
         <AnimatePresence>
           {stage === 'room' && (
             <m.div
               initial={{ opacity: 0, y: -6 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0 }}
-              className="flex h-10 items-center gap-1 rounded-full bg-mint pl-4 pr-1 text-mint-ink"
+              className="flex h-10 items-center gap-1 rounded-full bg-mint pl-4 pr-1 font-medium text-mint-ink"
             >
               <span className="live-dot" aria-hidden="true" />
-              <span className="ml-1.5 max-w-[46vw] truncate text-[14px] font-semibold">{v.peerDevice ?? 'Conectado'}</span>
+              <span className="ml-1.5 max-w-[46vw] truncate text-[15px]">{v.peerDevice ?? 'Conectado'}</span>
               {v.isOwner ? (
                 <button
                   type="button"
@@ -85,14 +86,14 @@ export function App() {
         <AnimatePresence mode="wait" initial={false}>
           <m.div key={stage} variants={screen} initial="hidden" animate="show" exit="exit">
             {stage === 'pair' && <PairScreen shareUrl={v.phase === 'connecting' ? null : v.shareUrl} onTutorial={() => setTutorial(true)} />}
-            {stage === 'room' && <RoomScreen dragging={drag} onFiles={(f) => ctl.sendFiles(f)} onText={(t) => ctl.sendText(t)} />}
+            {stage === 'room' && <RoomScreen dragging={drag} items={v.items} onFiles={(f) => ctl.sendFiles(f)} onText={(t) => ctl.sendText(t)} />}
             {stage === 'ended' && <Ended phase={v.phase} error={v.error} onNew={() => ctl.newRoom()} />}
           </m.div>
         </AnimatePresence>
         {stage !== 'pair' && <TransferList items={v.items} onCancel={(i) => ctl.cancel(i)} />}
       </main>
 
-      <footer className="py-6 text-[13px] font-medium text-muted">Cifrado de extremo a extremo. Protege el trayecto, no la PC: borra lo descargado al terminar.</footer>
+      <footer className="py-6 text-[13px] text-muted">Cifrado de extremo a extremo. Protege el trayecto, no la PC: borra lo descargado al terminar.</footer>
 
       <AnimatePresence>
         {v.warning && (
@@ -123,8 +124,8 @@ const ENDED: Partial<Record<Phase, string>> = {
 
 function Ended({ phase, error, onNew }: { phase: Phase; error: string | null; onNew: () => void }) {
   return (
-    <section className="tile flex min-h-[200px] flex-col items-start justify-between gap-8 sm:min-h-[260px] bg-surface p-6 ring-1 ring-line sm:p-8">
-      <h1 className="font-display text-[40px] leading-[1.02] tracking-[-0.02em] sm:text-[56px]">{ENDED[phase] ?? error ?? 'Algo falló'}</h1>
+    <section className="flex min-h-[200px] flex-col items-start justify-between gap-8 rounded-lg bg-mist p-6 sm:min-h-[260px] sm:p-8">
+      <h1 className="text-[38px] font-semibold leading-[1.02] tracking-[-0.04em] sm:text-[52px]">{ENDED[phase] ?? error ?? 'Algo falló'}</h1>
       <button type="button" onClick={onNew} className="press inline-flex h-12 items-center gap-2 rounded-full bg-ink px-6 text-[15px] font-semibold text-on-ink">
         <ArrowClockwise size={18} weight="bold" aria-hidden="true" />
         Nueva sala
