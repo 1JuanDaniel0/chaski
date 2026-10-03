@@ -37,6 +37,8 @@ export class Controller {
   private expiry: ReturnType<typeof setTimeout> | null = null;
   private readonly t0 = performance.now();
   private initialized = false;
+  private last: { secret: Uint8Array<ArrayBuffer>; scanned: boolean } | null = null;
+  private linked = false;
 
   subscribe = (l: () => void): (() => void) => {
     this.listeners.add(l);
@@ -58,10 +60,19 @@ export class Controller {
     const scanned = m ? parseSecret(m[1]!) : null;
     if (location.hash) history.replaceState(null, '', location.pathname + location.search);
     void this.start(scanned ?? generateSecret(), scanned !== null);
+    // Si se cayó antes de emparejar, reintenta solo al volver la red.
+    addEventListener('online', () => {
+      if (this.view.phase === 'error' && !this.linked) this.retry();
+    });
   }
 
   newRoom(): void {
     void this.start(generateSecret(), false);
+  }
+
+  /** Vuelve a intentar con la misma sala: el QR ya escaneado sigue sirviendo. */
+  retry(): void {
+    if (this.last) void this.start(this.last.secret, this.last.scanned);
   }
 
   private teardown(): void {
@@ -79,6 +90,8 @@ export class Controller {
 
   private async start(secret: Uint8Array<ArrayBuffer>, scanned: boolean): Promise<void> {
     this.teardown();
+    this.last = { secret, scanned };
+    this.linked = false;
     const gen = this.gen;
     const alive = () => gen === this.gen;
     this.set({
@@ -163,7 +176,7 @@ export class Controller {
       },
       onClose: () => {
         if (!alive()) return;
-        if (!joined) this.set({ phase: 'error', error: 'No se pudo conectar con el servidor.' });
+        if (!joined) this.set({ phase: 'error', error: 'Sin conexión con el servidor' });
         else if (this.view.phase === 'waiting' && !scanned) this.newRoom();
       },
     });
@@ -183,6 +196,7 @@ export class Controller {
       const mgr = new TransferManager(adapter, (items) => gen === this.gen && this.set({ items }), this.view.isOwner);
       this.manager = mgr;
       ch.onmessage = (e) => mgr.onMessage(e.data);
+      this.linked = true;
       this.set({ phase: 'connected' });
       void this.reportRoute();
     };

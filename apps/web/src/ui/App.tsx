@@ -34,7 +34,8 @@ export function App() {
   const [drag, setDrag] = useState(false);
   const [tutorial, setTutorial] = useState(false);
   const connectedAt = useRef<number | null>(null);
-  const stage = STAGE[v.phase];
+  // Un error antes de emparejar se muestra en la pantalla de inicio, no en un chat vacío.
+  const stage: Stage = v.phase === 'error' && connectedAt.current === null ? 'pair' : STAGE[v.phase];
   const live = v.phase === 'connected';
 
   useEffect(() => {
@@ -110,7 +111,12 @@ export function App() {
         <AnimatePresence mode="wait" initial={false}>
           {stage === 'pair' ? (
             <m.div key="pair" variants={screen} initial="hidden" animate="show" exit="exit" className="mx-auto flex w-full max-w-[1296px] flex-1 flex-col overflow-y-auto px-4 sm:px-8">
-              <PairScreen shareUrl={v.phase === 'connecting' ? null : v.shareUrl} onTutorial={() => setTutorial(true)} />
+              <PairScreen
+                shareUrl={v.phase === 'connecting' ? null : v.shareUrl}
+                error={v.phase === 'error' ? (v.error ?? 'No se pudo conectar') : null}
+                onRetry={() => ctl.retry()}
+                onTutorial={() => setTutorial(true)}
+              />
               <p className="hidden items-center gap-2 pb-8 text-[14px] text-muted md:flex">
                 <LockSimple size={16} aria-hidden="true" />
                 Cifrado de extremo a extremo. Nada pasa por un servidor ni se guarda.
