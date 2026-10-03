@@ -10,8 +10,11 @@ on:
 permissions:
   contents: read
 
+# CodeQL y dependency review son gratis solo en repos públicos; en uno privado requieren
+# GitHub Advanced Security. Mientras el repo sea privado, estos jobs se saltan (no fallan).
 jobs:
   codeql:
+    if: ${{ !github.event.repository.private }}
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -32,7 +35,7 @@ jobs:
           category: "/language:${{ matrix.language }}"
 
   dependency-review:
-    if: github.event_name == 'pull_request'
+    if: ${{ github.event_name == 'pull_request' && !github.event.repository.private }}
     runs-on: ubuntu-latest
     permissions:
       contents: read
