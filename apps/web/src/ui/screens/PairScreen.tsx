@@ -1,5 +1,5 @@
 import { AnimatePresence, m } from 'motion/react';
-import { LockSimple, PlayCircle } from '@phosphor-icons/react';
+import { ArrowClockwise, LockSimple, PlayCircle } from '@phosphor-icons/react';
 import { QrCode } from '../QrCode';
 import { LogoMark } from '../brand/Logo';
 import { fast, rise, stagger } from '../motion';
@@ -7,7 +7,18 @@ import { fast, rise, stagger } from '../motion';
 const STEPS = ['Abre la cámara del celular', 'Apunta al código', 'Elige qué enviar'];
 
 /** PC esperando: un título que dice qué hacer, tres pasos y el QR grande. */
-export function PairScreen({ shareUrl, onTutorial }: { shareUrl: string | null; onTutorial: () => void }) {
+export function PairScreen({
+  shareUrl,
+  error,
+  onRetry,
+  onTutorial,
+}: {
+  shareUrl: string | null;
+  error: string | null;
+  onRetry: () => void;
+  onTutorial: () => void;
+}) {
+  if (error) return <Offline message={error} onRetry={onRetry} />;
   if (!shareUrl) return <Connecting />;
   return (
     <m.div
@@ -69,6 +80,24 @@ function Connecting() {
     <m.div variants={rise} initial="hidden" animate="show" className="flex flex-1 flex-col items-center justify-center gap-6">
       <LogoMark size={88} running />
       <p className="text-[24px] font-semibold tracking-[-0.03em]">Conectando</p>
+    </m.div>
+  );
+}
+
+/** Sin servidor o sin red: el chaski se detiene, el motivo y un solo botón. */
+function Offline({ message, onRetry }: { message: string; onRetry: () => void }) {
+  return (
+    <m.div variants={rise} initial="hidden" animate="show" role="alert" className="flex flex-1 flex-col items-center justify-center gap-6 text-center">
+      <LogoMark size={88} className="text-muted" />
+      <p className="text-[24px] font-semibold tracking-[-0.03em]">{message}</p>
+      <button
+        type="button"
+        onClick={onRetry}
+        className="press inline-flex h-14 items-center gap-2 rounded-full bg-ink px-7 text-[16px] font-semibold text-on-ink"
+      >
+        <ArrowClockwise size={18} weight="bold" aria-hidden="true" />
+        Reintentar
+      </button>
     </m.div>
   );
 }
