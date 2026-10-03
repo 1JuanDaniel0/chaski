@@ -36,6 +36,7 @@ export class Controller {
   private remote: string | null = null;
   private expiry: ReturnType<typeof setTimeout> | null = null;
   private readonly t0 = performance.now();
+  private initialized = false;
 
   subscribe = (l: () => void): (() => void) => {
     this.listeners.add(l);
@@ -50,6 +51,9 @@ export class Controller {
 
   /** Arranca con el secreto del hash (dispositivo que escanea) o uno nuevo. */
   init(): void {
+    // Idempotente: StrictMode ejecuta los efectos dos veces y la segunda ya no vería el hash.
+    if (this.initialized) return;
+    this.initialized = true;
     const m = /^#k=([A-Za-z0-9_-]+)$/.exec(location.hash);
     const scanned = m ? parseSecret(m[1]!) : null;
     if (location.hash) history.replaceState(null, '', location.pathname + location.search);
