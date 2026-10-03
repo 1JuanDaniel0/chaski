@@ -1,0 +1,13 @@
+{
+  "name": "Chasqui",
+  "short_name": "Chasqui",
+  "description": "Envía archivos y texto entre dispositivos, directo y cifrado.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#1f6f5c",
+  "lang": "es",
+  "icons": [
+    { "src": "/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }
+  ]
+}
