@@ -2,8 +2,8 @@
 @import '@fontsource-variable/outfit';
 
 /*
-  Sistema de diseño de Chaski. La regla es la restricción:
-  1 color de marca, 3 pasteles + gris, radios 12/20/28 y una sola fuente. Nada fuera de aquí.
+  Sistema de diseño de Chaski: formato de chat, como WhatsApp.
+  1 color de marca, tinta y grises; radios 8/12/20/24 y una sola fuente. Nada fuera de aquí.
   Los colores por defecto de Tailwind están desactivados a propósito.
 */
 @theme {
@@ -11,32 +11,28 @@
   --color-paper: var(--c-paper);
   --color-surface: var(--c-surface);
   --color-ink: var(--c-ink);
-  --color-ink-soft: var(--c-ink-soft);
+  --color-on-ink: var(--c-on-ink);
   --color-muted: var(--c-muted);
   --color-line: var(--c-line);
+  --color-soft: var(--c-soft);
   --color-brand: var(--c-brand);
-  --color-on-ink: var(--c-on-ink);
   --color-peach: var(--c-peach);
   --color-mint: var(--c-mint);
-  --color-sky: var(--c-sky);
-  --color-mist: var(--c-mist);
-  --color-hero: var(--c-hero);
-  --color-on-hero: var(--c-on-hero);
   --color-mint-ink: var(--c-mint-ink);
+  --color-online: var(--c-online);
   --color-danger: var(--c-danger);
 
   --font-*: initial;
-  --font-display: 'Outfit Variable', ui-sans-serif, system-ui, sans-serif;
   --font-sans: 'Outfit Variable', ui-sans-serif, system-ui, sans-serif;
 
   --radius-*: initial;
+  --radius-xs: 8px;
   --radius-sm: 12px;
   --radius-md: 20px;
-  --radius-lg: 28px;
+  --radius-lg: 24px;
   --radius-full: 9999px;
 
   --shadow-*: initial;
-  --shadow-soft: 0 1px 2px rgb(23 21 15 / 0.04), 0 8px 24px -12px rgb(23 21 15 / 0.08);
 
   --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
 }
@@ -46,21 +42,16 @@
   --c-paper: #ffffff;
   --c-surface: #ffffff;
   --c-ink: #111114;
-  --c-ink-soft: #2a2a30;
+  --c-on-ink: #ffffff;
   --c-muted: #7a7b85;
   --c-line: #ececf0;
+  --c-soft: #f3f3f5; /* burbuja recibida, barra de escritura */
   --c-brand: #ff5a36; /* el folder del chaski */
-  --c-on-ink: #ffffff;
-  --c-peach: #ffece4;
-  --c-mint: #e1f3f4; /* aqua */
-  --c-sky: #e7e9f8; /* lavanda */
-  --c-mist: #f1f2f4;
-  --c-hero: #141418;
-  --c-on-hero: #ffffff;
+  --c-peach: #ffe3d8;
+  --c-mint: #e1f3f4;
   --c-mint-ink: #0f6e73;
+  --c-online: #1fa463;
   --c-danger: #d92d20;
-  --c-arc: #f8f8fa;
-  --c-blob: #ffd0bf;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -69,21 +60,16 @@
     --c-paper: #0e0e11;
     --c-surface: #17171c;
     --c-ink: #f4f4f6;
-    --c-ink-soft: #dcdce2;
+    --c-on-ink: #111114;
     --c-muted: #93949e;
     --c-line: #26262d;
+    --c-soft: #1c1c22;
     --c-brand: #ff6a48;
-    --c-on-ink: #111114;
-    --c-peach: #2a1c17;
+    --c-peach: #3a241c;
     --c-mint: #142326;
-    --c-sky: #1c1e2b;
-    --c-mist: #1a1a20;
-    --c-hero: #1d1d24;
-    --c-on-hero: #ffffff;
     --c-mint-ink: #7fd8dc;
+    --c-online: #3ddc84;
     --c-danger: #ff8a80;
-    --c-arc: #131317;
-    --c-blob: #ffb49c;
   }
 }
 
@@ -111,14 +97,18 @@
 }
 
 @layer utilities {
-  .tile {
-    @apply rounded-lg;
-  }
   .press {
     transition: transform 160ms var(--ease-out), background-color 200ms var(--ease-out), opacity 200ms;
   }
   .press:active:not(:disabled) {
-    transform: scale(0.97);
+    transform: scale(0.94);
+  }
+  /* Burbujas: la esquina del lado del remitente queda más cerrada, como en WhatsApp. */
+  .bubble-in {
+    border-radius: 24px 24px 24px 8px;
+  }
+  .bubble-out {
+    border-radius: 24px 24px 8px 24px;
   }
 }
 
@@ -166,32 +156,12 @@
   animation: chaski-in 600ms var(--ease-out) both;
 }
 
-/* Formas orgánicas de la card protagonista: derivan lento, sin degradados. */
-@keyframes drift {
-  from { transform: translate(0, 0) rotate(0deg); }
-  to { transform: translate(-3%, 4%) rotate(8deg); }
+/* Ruta punteada entre dispositivos: los puntos avanzan, como el chaski en camino. */
+@keyframes route {
+  to { stroke-dashoffset: -16; }
 }
-.blob {
-  transform-box: fill-box;
-  transform-origin: center;
-  animation: drift 14s ease-in-out infinite alternate;
-}
-.blob + .blob {
-  animation-duration: 18s;
-  animation-direction: alternate-reverse;
-}
-
-/* Arco gris de fondo, como en iO. */
-.page-arc {
-  position: fixed;
-  z-index: -1;
-  top: -62vmax;
-  right: -38vmax;
-  width: 100vmax;
-  height: 100vmax;
-  border-radius: 9999px;
-  background: var(--c-arc);
-  pointer-events: none;
+.route-line {
+  animation: route 900ms linear infinite;
 }
 
 @media (prefers-reduced-motion: reduce) {
