@@ -25,6 +25,8 @@ export interface TransferItem {
   status: ItemStatus;
   text?: string;
   blob?: Blob;
+  /** Imagen propia enviada: solo para mostrar la miniatura local. */
+  preview?: Blob;
   executable?: boolean;
   note?: string;
 }
@@ -86,7 +88,7 @@ export class TransferManager {
     const id = this.takeId();
     const name = sanitizeFilename(file.name);
     this.outFiles.set(id, { file, accepted: false });
-    this.put({ key: `out:${id}`, id, dir: 'out', kind: 'file', name, mime: file.type, size: file.size, transferred: 0, status: 'pending' });
+    this.put({ key: `out:${id}`, id, dir: 'out', kind: 'file', name, mime: file.type, size: file.size, transferred: 0, status: 'pending', preview: file.type.startsWith('image/') ? file : undefined });
     this.sendCtl({ t: 'file-offer', id, name: file.name, size: file.size, mime: file.type || 'application/octet-stream' });
   }
 

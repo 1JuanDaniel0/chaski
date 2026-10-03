@@ -9,11 +9,12 @@
 
 /* estado final */
 .tut-qr { opacity: 0; }
-.tut-pill { transform: translateY(-52px); }
 .tut-arc-reveal { stroke-dasharray: 1; stroke-dashoffset: 0; }
-.tut-scan, .tut-chip, .tut-brackets, .tut-dot, .tut-track, .tut-fill { opacity: 0; }
+.tut-scan, .tut-brackets, .tut-dot, .tut-track, .tut-fill { opacity: 0; }
+.tut-chip { transform-box: fill-box; transform-origin: 100% 100%; }
+.tut-row { transform-box: fill-box; transform-origin: 0% 100%; }
 .tut-fill { transform-box: fill-box; transform-origin: 0% 50%; }
-.tut-button { transform-box: fill-box; transform-origin: 0% 50%; }
+.tut-button { transform-box: fill-box; transform-origin: 50% 50%; }
 .tut-live { opacity: 0.25; transform-box: fill-box; transform-origin: center; }
 .tut-dot { offset-rotate: 0deg; }
 
@@ -72,13 +73,11 @@
   93.33% { opacity: 0; }
   100% { opacity: 1; }
 }
-@keyframes tut-pill {
-  0%, 29.33% { opacity: 0; transform: translateY(6px); }
-  34.67% { opacity: 1; transform: translateY(0); }
-  45.33% { opacity: 1; transform: translateY(0); }
-  52% { opacity: 1; transform: translateY(-52px); }
-  93.33% { opacity: 1; transform: translateY(-52px); }
-  100% { opacity: 0; transform: translateY(-52px); }
+@keyframes tut-chat {
+  0%, 29.33% { opacity: 0; }
+  34.67% { opacity: 1; }
+  93.33% { opacity: 1; }
+  100% { opacity: 0; }
 }
 @keyframes tut-live {
   0% { opacity: 0.35; transform: scale(0.6); }
@@ -95,11 +94,10 @@
   100% { opacity: 0; }
 }
 @keyframes tut-chip {
-  0%, 45.33% { opacity: 0; transform: translateY(8px); }
-  49.33% { opacity: 1; transform: translateY(0); }
-  53.33% { opacity: 1; transform: translateY(-16px); }
-  56% { opacity: 0; transform: translateY(-22px); }
-  100% { opacity: 0; transform: translateY(-22px); }
+  0%, 45.33% { opacity: 0; transform: scale(0.9); }
+  49.33% { opacity: 1; transform: scale(1); }
+  93.33% { opacity: 1; transform: scale(1); }
+  100% { opacity: 0; transform: scale(1); }
 }
 @keyframes tut-dot {
   0%, 53.2% { opacity: 0; offset-distance: 0%; }
@@ -109,10 +107,10 @@
   100% { opacity: 0; offset-distance: 100%; }
 }
 @keyframes tut-row {
-  0%, 65.33% { opacity: 0; transform: translateY(8px); }
-  69.33% { opacity: 1; transform: translateY(0); }
-  93.33% { opacity: 1; transform: translateY(0); }
-  100% { opacity: 0; transform: translateY(0); }
+  0%, 65.33% { opacity: 0; transform: scale(0.9); }
+  69.33% { opacity: 1; transform: scale(1); }
+  93.33% { opacity: 1; transform: scale(1); }
+  100% { opacity: 0; transform: scale(1); }
 }
 @keyframes tut-track {
   0% { opacity: 1; }
@@ -126,8 +124,9 @@
   84%, 100% { opacity: 0; transform: scaleX(1); }
 }
 @keyframes tut-button {
-  0%, 80% { opacity: 0; transform: scaleX(0.6); }
-  84%, 100% { opacity: 1; transform: scaleX(1); }
+  0%, 80% { opacity: 0; transform: scale(0.5); }
+  84%, 93.33% { opacity: 1; transform: scale(1); }
+  100% { opacity: 0; transform: scale(1); }
 }
 @keyframes tut-s1 {
   0% { color: var(--c-ink); }
@@ -167,7 +166,7 @@
     --tut-t: 7.5s;
     --tut-ease: cubic-bezier(0.22, 1, 0.36, 1);
   }
-  .tut-phone, .tut-scan, .tut-brackets, .tut-qr, .tut-pill, .tut-arc-reveal, .tut-arc,
+  .tut-phone, .tut-scan, .tut-brackets, .tut-qr, .tut-chat, .tut-arc-reveal, .tut-arc,
   .tut-chip, .tut-dot, .tut-row, .tut-track, .tut-fill, .tut-button,
   .tut-step, .tut-step-dot {
     animation-duration: var(--tut-t);
@@ -179,7 +178,7 @@
   .tut-scan { animation-name: tut-scan; }
   .tut-brackets { animation-name: tut-brackets; }
   .tut-qr { animation-name: tut-qr; }
-  .tut-pill { animation-name: tut-pill; }
+  .tut-chat { animation-name: tut-chat; }
   .tut-arc-reveal { animation-name: tut-arc-reveal; animation-timing-function: linear; }
   .tut-arc { animation-name: tut-arc; }
   .tut-chip { animation-name: tut-chip; }
