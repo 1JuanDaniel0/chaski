@@ -1,0 +1,41 @@
+server:
+  port: ${PORT:8443}
+  # TLS (opcional; en producción lo termina Cloudflare / certificado de origen):
+  #   SERVER_SSL_ENABLED=true
+  #   SERVER_SSL_KEY_STORE=/etc/chasqui/origin.p12
+  #   SERVER_SSL_KEY_STORE_PASSWORD=...
+  #   SERVER_SSL_KEY_STORE_TYPE=PKCS12
+  shutdown: graceful
+
+spring:
+  application:
+    name: chasqui-signal
+
+management:
+  server:
+    # Puerto separado: no debe exponerse por el proxy público.
+    port: ${MANAGEMENT_PORT:9090}
+  endpoints:
+    web:
+      exposure:
+        include: health,prometheus
+
+chasqui:
+  allowed-origins: ${ALLOWED_ORIGINS:http://localhost:5173,http://127.0.0.1:5173}
+  max-frame-bytes: 65536
+  max-peers-per-room: 2
+  join-per-ip-per-minute: 10
+  messages-per-second: 20
+  single-peer-ttl: 10m
+  inactivity-ttl: 30m
+  sweep-interval-ms: 30000
+  turn:
+    secret: ${TURN_SECRET:}
+    urls: ${TURN_URLS:}
+    ttl-seconds: ${TURN_TTL_SECONDS:3600}
+
+logging:
+  pattern:
+    console: "%d{yyyy-MM-dd'T'HH:mm:ss.SSSXXX} level=%level logger=%logger{20} msg=\"%msg\"%n"
+  level:
+    root: INFO
