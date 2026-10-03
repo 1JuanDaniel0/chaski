@@ -1,0 +1,179 @@
+import { useEffect, useMemo, useRef, useState, useSyncExternalStore, type DragEvent } from 'react';
+import { AnimatePresence, m } from 'motion/react';
+import { ArrowClockwise, DeviceMobile, Laptop, LockSimple, UploadSimple, X } from '@phosphor-icons/react';
+import { Controller, type Phase } from '../app/controller';
+import { Logo, LogoMark } from './brand/Logo';
+import { PairScreen } from './screens/PairScreen';
+import { Thread } from './chat/Thread';
+import { Composer, coarse } from './chat/Composer';
+import { TutorialDialog } from './tutorial/TutorialDialog';
+import { EASE, screen } from './motion';
+
+type Stage = 'pair' | 'chat';
+const STAGE: Record<Phase, Stage> = {
+  starting: 'pair',
+  waiting: 'pair',
+  connecting: 'pair',
+  connected: 'chat',
+  'peer-left': 'chat',
+  kicked: 'chat',
+  error: 'chat',
+};
+
+const ENDED: Partial<Record<Phase, string>> = {
+  'peer-left': 'El otro dispositivo se desconectó',
+  kicked: 'Te desconectaron de la sala',
+};
+
+const isPhone = (label: string | null) => !!label && /Android|iOS/.test(label);
+const clock = (t: number) => new Date(t).toLocaleTimeString('es', { hour: '2-digit', minute: '2-digit' });
+
+export function App() {
+  const ctl = useMemo(() => new Controller(), []);
+  const v = useSyncExternalStore(ctl.subscribe, ctl.getSnapshot);
+  const [drag, setDrag] = useState(false);
+  const [tutorial, setTutorial] = useState(false);
+  const connectedAt = useRef<number | null>(null);
+  const stage = STAGE[v.phase];
+  const live = v.phase === 'connected';
+
+  useEffect(() => {
+    ctl.init();
+  }, [ctl]);
+  if (live && connectedAt.current === null) connectedAt.current = Date.now();
+  if (stage === 'pair') connectedAt.current = null;
+
+  const peer = v.peerDevice ?? 'otro dispositivo';
+  const system = [
+    ...(connectedAt.current ? [{ key: 'on', text: `Conectado con ${peer} · ${clock(connectedAt.current)}` }] : []),
+    ...(stage === 'chat' && !live ? [{ key: 'off', text: ENDED[v.phase] ?? v.error ?? 'Se perdió la conexión' }] : []),
+  ];
+
+  const dragProps = live
+    ? {
+        onDragOver: (e: DragEvent) => {
+          e.preventDefault();
+          setDrag(true);
+        },
+        onDragLeave: (e: DragEvent) => {
+          if (!e.currentTarget.contains(e.relatedTarget as Node | null)) setDrag(false);
+        },
+        onDrop: (e: DragEvent) => {
+          e.preventDefault();
+          setDrag(false);
+          ctl.sendFiles(e.dataTransfer.files);
+        },
+      }
+    : {};
+
+  return (
+    <div className="flex h-dvh flex-col" {...dragProps}>
+      <header className="mx-auto flex h-[72px] w-full max-w-[1296px] shrink-0 items-center justify-between gap-4 px-4 sm:h-20 sm:px-8">
+        {stage === 'chat' && coarse ? <LogoMark size={34} /> : <Logo />}
+        <AnimatePresence>
+          {stage === 'chat' && (
+            <m.div initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="flex min-w-0 items-center gap-3">
+              {!coarse && (
+                <>
+                  <span className="hidden items-center gap-2 text-[15px] font-medium md:flex">
+                    <Laptop size={22} aria-hidden="true" /> Esta PC
+                  </span>
+                  <svg width="56" height="4" className="hidden text-brand md:block" aria-hidden="true">
+                    <line x1="2" y1="2" x2="54" y2="2" stroke="currentColor" strokeWidth="2" strokeDasharray="2 6" strokeLinecap="round" className={live ? 'route-line' : ''} />
+                  </svg>
+                </>
+              )}
+              <span className={`flex min-w-0 items-center gap-2 text-[15px] font-medium ${live ? '' : 'text-muted'}`}>
+                <span className={`size-2 shrink-0 rounded-full ${live ? 'bg-online' : 'bg-line'}`} aria-hidden="true" />
+                {isPhone(v.peerDevice) ? <DeviceMobile size={22} aria-hidden="true" /> : <Laptop size={22} aria-hidden="true" />}
+                <span className="truncate">{peer}</span>
+              </span>
+            </m.div>
+          )}
+        </AnimatePresence>
+        {stage === 'chat' && live && v.isOwner ? (
+          <button
+            type="button"
+            onClick={() => ctl.kick()}
+            aria-label="Desconectar al otro dispositivo"
+            className="press inline-flex h-10 shrink-0 items-center gap-2 rounded-full bg-soft px-4 text-[15px] font-medium"
+          >
+            <X size={16} weight="bold" aria-hidden="true" />
+            <span className="hidden sm:inline">Desconectar</span>
+          </button>
+        ) : (
+          <span className="w-10" />
+        )}
+      </header>
+
+      <main className="flex min-h-0 flex-1 flex-col">
+        <AnimatePresence mode="wait" initial={false}>
+          {stage === 'pair' ? (
+            <m.div key="pair" variants={screen} initial="hidden" animate="show" exit="exit" className="mx-auto flex w-full max-w-[1296px] flex-1 flex-col overflow-y-auto px-4 sm:px-8">
+              <PairScreen shareUrl={v.phase === 'connecting' ? null : v.shareUrl} onTutorial={() => setTutorial(true)} />
+              <p className="hidden items-center gap-2 pb-8 text-[14px] text-muted md:flex">
+                <LockSimple size={16} aria-hidden="true" />
+                Cifrado de extremo a extremo. Nada pasa por un servidor ni se guarda.
+              </p>
+            </m.div>
+          ) : (
+            <m.div key="chat" variants={screen} initial="hidden" animate="show" exit="exit" className="flex min-h-0 flex-1 flex-col">
+              <div className="min-h-0 flex-1 overflow-y-auto px-4">
+                <div className="mx-auto flex min-h-full max-w-[760px] flex-col justify-end">
+                  <Thread items={v.items} system={system} onCancel={(i) => ctl.cancel(i)} />
+                </div>
+              </div>
+              <div className="mx-auto w-full max-w-[760px] shrink-0 px-3 pb-[max(12px,env(safe-area-inset-bottom))] pt-1 sm:px-4 sm:pb-6">
+                {live ? (
+                  <Composer onFiles={(f) => ctl.sendFiles(f)} onText={(t) => ctl.sendText(t)} />
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => ctl.newRoom()}
+                    className="press flex h-14 w-full items-center justify-center gap-2 rounded-full bg-ink text-[16px] font-semibold text-on-ink"
+                  >
+                    <ArrowClockwise size={18} weight="bold" aria-hidden="true" />
+                    Nueva sala
+                  </button>
+                )}
+              </div>
+            </m.div>
+          )}
+        </AnimatePresence>
+      </main>
+
+      <AnimatePresence>
+        {drag && (
+          <m.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0, transition: { duration: 0.12 } }}
+            className="pointer-events-none fixed inset-3 z-20 flex flex-col items-center justify-center gap-4 rounded-[24px] border-2 border-dashed border-brand bg-paper/90 text-ink"
+          >
+            <UploadSimple size={44} className="text-brand" aria-hidden="true" />
+            <p className="text-[28px] font-semibold tracking-[-0.03em]">Suelta para enviar</p>
+          </m.div>
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {v.warning && (
+          <m.div
+            role="alert"
+            initial={{ opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 8, transition: { duration: 0.16, ease: EASE } }}
+            className="fixed inset-x-4 top-4 z-30 mx-auto flex max-w-[520px] items-center gap-4 rounded-[20px] bg-ink py-3 pl-5 pr-2 text-[15px] text-on-ink"
+          >
+            <span className="flex-1">{v.warning}</span>
+            <button type="button" onClick={() => ctl.dismissWarning()} className="press h-10 rounded-full bg-on-ink/10 px-4 font-semibold">
+              Entendido
+            </button>
+          </m.div>
+        )}
+      </AnimatePresence>
+
+      <TutorialDialog open={tutorial} onClose={() => setTutorial(false)} />
+    </div>
+  );
+}

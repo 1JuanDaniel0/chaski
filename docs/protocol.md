@@ -152,3 +152,14 @@ La IP del cliente se toma de `CF-Connecting-IP` si existe (Cloudflare); si no, d
 - `username = "<unix_expiración>:<8 bytes aleatorios base64url>"`
 - `credential = base64( HMAC-SHA1(TURN_SECRET, username) )`
 - `urls` viene de la configuración del servidor (`TURN_URLS`, separadas por comas).
+
+## 8. Vector de prueba
+
+Ambos lados DEBEN reproducirlo en sus pruebas.
+
+| Valor                | Resultado                                                          |
+|----------------------|--------------------------------------------------------------------|
+| `s` (hex)            | `000102030405060708090a0b0c0d0e0f`                                 |
+| `s` (base64url)      | `AAECAwQFBgcICQoLDA0ODw`                                           |
+| `roomId` (base64url) | `4BZEvLZec_lQv2QMaGIN6A`                                           |
+| `k_sig` (hex)        | `7645b7cb1c5e8c4bb08ccb57eba36686376217fe6a947992a20f36da69f0a31c` |
