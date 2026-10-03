@@ -1,101 +1,134 @@
-import { useEffect, useMemo, useRef, useState, useSyncExternalStore, type DragEvent } from 'react';
-import { Controller } from '../app/controller';
-import { QrCode } from './QrCode';
+import { useEffect, useMemo, useState, useSyncExternalStore, type DragEvent } from 'react';
+import { AnimatePresence, m } from 'motion/react';
+import { ArrowClockwise, X } from '@phosphor-icons/react';
+import { Controller, type Phase } from '../app/controller';
+import { Logo } from './brand/Logo';
+import { PairScreen } from './screens/PairScreen';
+import { RoomScreen } from './screens/RoomScreen';
 import { TransferList } from './TransferList';
+import { TutorialDialog } from './tutorial/TutorialDialog';
+import { EASE, screen } from './motion';
+
+type Stage = 'pair' | 'room' | 'ended';
+const STAGE: Record<Phase, Stage> = {
+  starting: 'pair',
+  waiting: 'pair',
+  connecting: 'pair',
+  connected: 'room',
+  'peer-left': 'ended',
+  kicked: 'ended',
+  error: 'ended',
+};
 
 export function App() {
   const ctl = useMemo(() => new Controller(), []);
   const v = useSyncExternalStore(ctl.subscribe, ctl.getSnapshot);
-  const [text, setText] = useState('');
   const [drag, setDrag] = useState(false);
-  const fileRef = useRef<HTMLInputElement>(null);
+  const [tutorial, setTutorial] = useState(false);
+  const stage = STAGE[v.phase];
 
   useEffect(() => {
     ctl.init();
   }, [ctl]);
 
-  const onDrop = (e: DragEvent) => {
-    e.preventDefault();
-    setDrag(false);
-    if (v.phase === 'connected') ctl.sendFiles(e.dataTransfer.files);
-  };
+  const dragProps =
+    stage === 'room'
+      ? {
+          onDragOver: (e: DragEvent) => {
+            e.preventDefault();
+            setDrag(true);
+          },
+          onDragLeave: (e: DragEvent) => {
+            if (!e.currentTarget.contains(e.relatedTarget as Node | null)) setDrag(false);
+          },
+          onDrop: (e: DragEvent) => {
+            e.preventDefault();
+            setDrag(false);
+            ctl.sendFiles(e.dataTransfer.files);
+          },
+        }
+      : {};
 
   return (
-    <div
-      className={`app${drag ? ' drag' : ''}`}
-      onDragOver={(e) => {
-        e.preventDefault();
-        setDrag(true);
-      }}
-      onDragLeave={() => setDrag(false)}
-      onDrop={onDrop}
-    >
-      <header>
-        <h1>Chasqui</h1>
+    <div className="mx-auto flex min-h-dvh max-w-[1120px] flex-col px-4 sm:px-6" {...dragProps}>
+      <header className="flex h-20 items-center justify-between gap-4">
+        <Logo animated />
+        <AnimatePresence>
+          {stage === 'room' && (
+            <m.div
+              initial={{ opacity: 0, y: -6 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0 }}
+              className="flex h-10 items-center gap-1 rounded-full bg-mint pl-4 pr-1 text-mint-ink"
+            >
+              <span className="live-dot" aria-hidden="true" />
+              <span className="ml-1.5 max-w-[46vw] truncate text-[14px] font-semibold">{v.peerDevice ?? 'Conectado'}</span>
+              {v.isOwner ? (
+                <button
+                  type="button"
+                  onClick={() => ctl.kick()}
+                  aria-label="Desconectar al otro dispositivo"
+                  title="Desconectar"
+                  className="press ml-1 flex size-8 items-center justify-center rounded-full hover:bg-surface/60"
+                >
+                  <X size={14} weight="bold" />
+                </button>
+              ) : (
+                <span className="w-3" />
+              )}
+            </m.div>
+          )}
+        </AnimatePresence>
       </header>
 
-      <main>
-        {v.warning && (
-          <div className="alert" role="alert">
-            {v.warning} <button type="button" onClick={() => ctl.dismissWarning()}>Entendido</button>
-          </div>
-        )}
-
-        {(v.phase === 'starting' || v.phase === 'waiting') && (
-          <section className="center">
-            {v.shareUrl ? (
-              <>
-                <QrCode text={v.shareUrl} />
-                <p>Escanea con el celular para conectar.</p>
-              </>
-            ) : null}
-            <p className="muted">Esperando al otro dispositivo…</p>
-            {v.shareUrl && <p className="muted small">El código se renueva solo a los 10 minutos.</p>}
-          </section>
-        )}
-
-        {v.phase === 'connecting' && <p className="center muted">Conectando…</p>}
-
-        {v.phase === 'connected' && (
-          <section>
-            <div className="status">
-              <span>Conectado con <strong>{v.peerDevice ?? 'otro dispositivo'}</strong></span>
-              {v.isOwner && <button type="button" className="danger" onClick={() => ctl.kick()}>Expulsar</button>}
-            </div>
-            <div className="send">
-              <input ref={fileRef} type="file" multiple hidden onChange={(e) => { if (e.target.files) ctl.sendFiles(e.target.files); e.target.value = ''; }} />
-              <button type="button" className="primary big" onClick={() => fileRef.current?.click()}>Elegir archivos</button>
-              <p className="muted small hint">o arrástralos a esta ventana</p>
-              <label htmlFor="txt">Enviar texto</label>
-              <textarea id="txt" rows={3} maxLength={50000} value={text} onChange={(e) => setText(e.target.value)} />
-              <button type="button" disabled={!text.trim()} onClick={() => { ctl.sendText(text); setText(''); }}>Enviar texto</button>
-            </div>
-          </section>
-        )}
-
-        {v.phase === 'peer-left' && (
-          <section className="center">
-            <p>El otro dispositivo se desconectó.</p>
-            <button type="button" className="primary" onClick={() => ctl.newRoom()}>Nueva sala</button>
-          </section>
-        )}
-        {v.phase === 'kicked' && (
-          <section className="center">
-            <p>Te expulsaron de la sala.</p>
-            <button type="button" className="primary" onClick={() => ctl.newRoom()}>Nueva sala</button>
-          </section>
-        )}
-        {v.phase === 'error' && (
-          <section className="center">
-            <p role="alert">{v.error}</p>
-            <button type="button" className="primary" onClick={() => ctl.newRoom()}>Nueva sala</button>
-          </section>
-        )}
-
-        <TransferList items={v.items} onCancel={(i) => ctl.cancel(i)} />
+      <main className="flex-1 pb-6">
+        <AnimatePresence mode="wait" initial={false}>
+          <m.div key={stage} variants={screen} initial="hidden" animate="show" exit="exit">
+            {stage === 'pair' && <PairScreen shareUrl={v.phase === 'connecting' ? null : v.shareUrl} onTutorial={() => setTutorial(true)} />}
+            {stage === 'room' && <RoomScreen dragging={drag} onFiles={(f) => ctl.sendFiles(f)} onText={(t) => ctl.sendText(t)} />}
+            {stage === 'ended' && <Ended phase={v.phase} error={v.error} onNew={() => ctl.newRoom()} />}
+          </m.div>
+        </AnimatePresence>
+        {stage !== 'pair' && <TransferList items={v.items} onCancel={(i) => ctl.cancel(i)} />}
       </main>
 
-      <footer>El cifrado protege el trayecto, no la PC. Borra lo descargado al terminar.</footer>
+      <footer className="py-6 text-[13px] font-medium text-muted">Cifrado de extremo a extremo. Protege el trayecto, no la PC: borra lo descargado al terminar.</footer>
+
+      <AnimatePresence>
+        {v.warning && (
+          <m.div
+            role="alert"
+            initial={{ opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 8, transition: { duration: 0.16, ease: EASE } }}
+            className="fixed inset-x-4 bottom-4 z-10 mx-auto flex max-w-[520px] items-center gap-4 rounded-md bg-ink py-3 pl-5 pr-2 text-[15px] text-on-ink"
+          >
+            <span className="flex-1">{v.warning}</span>
+            <button type="button" onClick={() => ctl.dismissWarning()} className="press h-10 rounded-full bg-on-ink/10 px-4 font-semibold">
+              Entendido
+            </button>
+          </m.div>
+        )}
+      </AnimatePresence>
+
+      <TutorialDialog open={tutorial} onClose={() => setTutorial(false)} />
     </div>
+  );
+}
+
+const ENDED: Partial<Record<Phase, string>> = {
+  'peer-left': 'Se desconectó',
+  kicked: 'Te desconectaron',
+};
+
+function Ended({ phase, error, onNew }: { phase: Phase; error: string | null; onNew: () => void }) {
+  return (
+    <section className="tile flex min-h-[200px] flex-col items-start justify-between gap-8 sm:min-h-[260px] bg-surface p-6 ring-1 ring-line sm:p-8">
+      <h1 className="font-display text-[40px] leading-[1.02] tracking-[-0.02em] sm:text-[56px]">{ENDED[phase] ?? error ?? 'Algo falló'}</h1>
+      <button type="button" onClick={onNew} className="press inline-flex h-12 items-center gap-2 rounded-full bg-ink px-6 text-[15px] font-semibold text-on-ink">
+        <ArrowClockwise size={18} weight="bold" aria-hidden="true" />
+        Nueva sala
+      </button>
+    </section>
   );
 }
