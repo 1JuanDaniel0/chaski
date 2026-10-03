@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
-# Obtiene/renueva el certificado Let's Encrypt de turn.chasqui.example con desafío DNS
+# Obtiene/renueva el certificado Let's Encrypt de turn.chaski.me con desafío DNS
 # (plugin dns-cloudflare de certbot) y reinicia coturn.
 # Requisitos: sudo, y un archivo con el token de la API de Cloudflare (permiso Zone:DNS:Edit):
 #   /etc/letsencrypt/cloudflare.ini  ->  dns_cloudflare_api_token = XXXXXXXX   (chmod 600)
 # Uso: sudo ./renew-turn-cert.sh   (ponlo en cron o en un timer de systemd, p. ej. semanal)
 set -euo pipefail
 
-DOMAIN="${TURN_DOMAIN:-turn.chasqui.example}"
+DOMAIN="${TURN_DOMAIN:-turn.chaski.me}"
 CF_CREDS="${CF_CREDS:-/etc/letsencrypt/cloudflare.ini}"
 INFRA_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 CERT_DIR="$INFRA_DIR/certs/turn"

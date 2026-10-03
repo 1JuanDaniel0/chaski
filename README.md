@@ -7,7 +7,7 @@
 
 Pasa archivos y texto entre dos dispositivos escaneando un QR. Sin cuentas, sin instalar nada en la PC y sin que nada se guarde en un servidor.
 
-**Demo:** https://app.chasqui.example _(placeholder)_
+**Demo:** https://chaski.me
 
 <!-- TODO: GIF del flujo (PC muestra QR, celular escanea, archivo llega) -->
 
@@ -49,8 +49,8 @@ flowchart LR
         A["PC (navegador)"]
         B["Celular (navegador)"]
     end
-    CFP["Cloudflare Pages<br/>app.chasqui.example"]
-    CFX["Proxy de Cloudflare<br/>signal.chasqui.example"]
+    CFP["Cloudflare Pages<br/>app.chaski.me"]
+    CFX["Proxy de Cloudflare<br/>signal.chaski.me"]
     subgraph VM["VM Oracle Cloud Always Free (ARM)"]
         SIG["Señalización<br/>Spring Boot :8443"]
         TURN["coturn<br/>3478 / 443"]

@@ -10,8 +10,8 @@ services:
       - "127.0.0.1:9090:9090"  # Actuator/métricas: solo localhost
     environment:
       TURN_SECRET: ${TURN_SECRET:?define TURN_SECRET}
-      ALLOWED_ORIGINS: https://app.chasqui.example
-      TURN_URLS: turn:turn.chasqui.example:3478?transport=udp,turn:turn.chasqui.example:3478?transport=tcp,turns:turn.chasqui.example:443?transport=tcp
+      ALLOWED_ORIGINS: https://chaski.me,https://app.chaski.me
+      TURN_URLS: turn:turn.chaski.me:3478?transport=udp,turn:turn.chaski.me:3478?transport=tcp,turns:turn.chaski.me:443?transport=tcp
       MANAGEMENT_SERVER_PORT: "9090"
       # TLS de origen con el certificado de origen de Cloudflare (ver docs/primeros-pasos.md).
       # Ajusta estas propiedades si apps/signal usa otros nombres.
