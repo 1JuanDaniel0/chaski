@@ -1,14 +1,35 @@
 import { useRef, useState, type KeyboardEvent } from 'react';
 import { m } from 'motion/react';
-import { ArrowUp, UploadSimple } from '@phosphor-icons/react';
+import { ArrowDown, ArrowUp, TextAa, UploadSimple } from '@phosphor-icons/react';
+import { formatSize } from '../../lib/format';
+import type { TransferItem } from '../../transfer/manager';
+import { HeroCard } from '../brand/HeroCard';
+import { CardHead } from './PairScreen';
 import { rise, stagger } from '../motion';
 
 const coarse = typeof matchMedia === 'function' && matchMedia('(pointer: coarse)').matches;
 
-/** Conectados: enviar archivos es la acción principal (tile grande); el texto, la secundaria. */
-export function RoomScreen({ dragging, onFiles, onText }: { dragging: boolean; onFiles: (f: FileList) => void; onText: (t: string) => void }) {
+function totals(items: TransferItem[], dir: 'in' | 'out') {
+  const done = items.filter((i) => i.dir === dir && i.status === 'done');
+  return { n: done.length, bytes: done.reduce((s, i) => s + (i.kind === 'file' ? i.size : 0), 0) };
+}
+
+/** Conectados: enviar archivos es la card protagonista; el texto y el resumen, secundarias. */
+export function RoomScreen({
+  dragging,
+  items,
+  onFiles,
+  onText,
+}: {
+  dragging: boolean;
+  items: TransferItem[];
+  onFiles: (f: FileList) => void;
+  onText: (t: string) => void;
+}) {
   const fileRef = useRef<HTMLInputElement>(null);
   const [text, setText] = useState('');
+  const got = totals(items, 'in');
+  const sent = totals(items, 'out');
 
   const send = () => {
     if (!text.trim()) return;
@@ -23,23 +44,27 @@ export function RoomScreen({ dragging, onFiles, onText }: { dragging: boolean; o
   };
 
   return (
-    <m.div variants={stagger} initial="hidden" animate="show" className="grid gap-3 md:grid-cols-12">
+    <m.div variants={stagger} initial="hidden" animate="show" className="grid gap-4 md:grid-cols-12 md:grid-rows-[auto_auto]">
       <m.button
         variants={rise}
         type="button"
         onClick={() => fileRef.current?.click()}
-        animate={dragging ? { scale: 1.01 } : { scale: 1 }}
-        className={`tile press relative flex min-h-[220px] flex-col justify-between overflow-hidden p-6 text-left transition-colors duration-200 sm:min-h-[300px] sm:p-8 md:col-span-7 ${
-          dragging ? 'bg-brand text-on-ink' : 'bg-peach text-ink hover:brightness-[0.985]'
-        }`}
+        animate={dragging ? { scale: 1.015 } : { scale: 1 }}
+        className="press text-left md:col-span-7 md:row-span-2"
       >
-        <UploadSimple size={36} weight="regular" aria-hidden="true" />
-        <span>
-          <span className="block font-display text-[40px] leading-[1.02] tracking-[-0.02em] sm:text-[56px]">
-            {dragging ? 'Suéltalos' : 'Enviar archivos'}
-          </span>
-          {!coarse && !dragging && <span className="mt-2 block text-[15px] font-medium text-muted">o arrástralos aquí</span>}
-        </span>
+        <HeroCard className={`h-full min-h-[240px] sm:min-h-[340px] ${dragging ? 'ring-4 ring-brand' : ''}`}>
+          <div className="flex h-full min-h-[inherit] flex-col justify-between p-6 sm:p-8">
+            <span className="flex justify-end">
+              <UploadSimple size={30} />
+            </span>
+            <span>
+              <span className="block text-[38px] font-semibold leading-[1.02] tracking-[-0.04em] sm:text-[52px]">
+                {dragging ? 'Suéltalos' : 'Enviar archivos'}
+              </span>
+              {!coarse && <span className="mt-2 block text-[16px] text-on-hero/70">{dragging ? 'Se envían al instante' : 'o arrástralos aquí'}</span>}
+            </span>
+          </div>
+        </HeroCard>
       </m.button>
       <input
         ref={fileRef}
@@ -58,31 +83,56 @@ export function RoomScreen({ dragging, onFiles, onText }: { dragging: boolean; o
           e.preventDefault();
           send();
         }}
-        className="tile flex min-h-[150px] flex-col bg-surface p-5 ring-1 ring-line sm:p-6 md:col-span-5"
+        className="flex min-h-[170px] flex-col gap-3 rounded-lg bg-mist p-5 md:col-span-5"
       >
-        <label htmlFor="txt" className="sr-only">
-          Texto para enviar
-        </label>
+        <span className="flex items-start justify-between">
+          <label htmlFor="txt" className="text-[19px] font-semibold tracking-[-0.02em]">
+            Texto
+          </label>
+          <TextAa size={24} aria-hidden="true" />
+        </span>
         <textarea
           id="txt"
           value={text}
           onChange={(e) => setText(e.target.value)}
           onKeyDown={onKey}
           maxLength={50000}
+          rows={2}
           placeholder="Escribe o pega un texto"
-          className="min-h-[64px] w-full flex-1 resize-none bg-transparent text-[19px] leading-snug outline-none placeholder:text-muted/70"
+          className="w-full flex-1 resize-none bg-transparent text-[18px] leading-snug outline-none placeholder:text-muted"
         />
-        <div className="flex justify-end">
+        <span className="flex justify-end">
           <button
             type="submit"
             aria-label="Enviar texto"
             disabled={!text.trim()}
-            className="press flex size-12 items-center justify-center rounded-full bg-ink text-on-ink disabled:opacity-20"
+            className="press inline-flex h-11 items-center gap-2 rounded-full bg-ink px-5 text-[15px] font-semibold text-on-ink disabled:opacity-25"
           >
-            <ArrowUp size={20} weight="bold" aria-hidden="true" />
+            Enviar
+            <ArrowUp size={16} weight="bold" aria-hidden="true" />
           </button>
-        </div>
+        </span>
       </m.form>
+
+      <m.section variants={rise} className="hidden min-h-[150px] flex-col justify-between rounded-lg bg-peach p-5 md:col-span-5 md:flex">
+        <CardHead title="En esta sesión" icon={null} />
+        <span className="flex items-end gap-8">
+          <span>
+            <span className="flex items-center gap-1.5 text-[34px] font-semibold leading-none tracking-[-0.03em]">
+              <ArrowDown size={22} weight="bold" className="text-brand" aria-label="Recibidos" />
+              {got.n}
+            </span>
+            <span className="mt-1 block text-[14px] text-muted">{formatSize(got.bytes)} recibidos</span>
+          </span>
+          <span>
+            <span className="flex items-center gap-1.5 text-[34px] font-semibold leading-none tracking-[-0.03em]">
+              <ArrowUp size={22} weight="bold" className="text-muted" aria-label="Enviados" />
+              {sent.n}
+            </span>
+            <span className="mt-1 block text-[14px] text-muted">{formatSize(sent.bytes)} enviados</span>
+          </span>
+        </span>
+      </m.section>
     </m.div>
   );
 }

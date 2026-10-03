@@ -1,4 +1,4 @@
-/* Tutorial de Chasqui. Bucle de 7.5 s. Los estilos base son el cuadro final
+/* Tutorial de Chaski. Bucle de 7.5 s. Los estilos base son el cuadro final
    (lo que se ve con prefers-reduced-motion); las animaciones sólo se activan
    si el usuario no pidió menos movimiento.
    Marcas: 1.0s=13.33% 2.2s=29.33% 2.6s=34.67% 3.0s=40% 3.4s=45.33% 3.7s=49.33%
@@ -257,4 +257,15 @@
 }
 @media (prefers-reduced-motion: reduce) {
   .tut-dialog[open], .tut-dialog[open]::backdrop { animation: none; }
+}
+
+/* El chaski rebota mientras corre por el arco. */
+@keyframes tut-runner-bob {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-3px); }
+}
+.tut-runner { animation: tut-runner-bob 260ms ease-in-out infinite; }
+.tut-paused .tut-runner { animation-play-state: paused; }
+@media (prefers-reduced-motion: reduce) {
+  .tut-runner { animation: none; }
 }
