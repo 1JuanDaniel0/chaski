@@ -43,9 +43,12 @@ public class SignalHandler extends TextWebSocketHandler {
         this.metrics = metrics;
     }
 
+    /** Tope para esperar a que el último mensaje salga antes de cerrar un socket. */
+    private static final long CLOSE_DRAIN_TIMEOUT_NS = 1_000_000_000L;
+
     /** Estado por conexión. */
     private static final class ConnState implements PeerChannel {
-        final WebSocketSession session;
+        final ConcurrentWebSocketSessionDecorator session;
         final String ip;
         final TokenBucket bucket;
         volatile Peer peer;
@@ -67,6 +70,17 @@ public class SignalHandler extends TextWebSocketHandler {
 
         @Override
         public void close(int code, String reason) {
+            // El decorador puede dejar el último mensaje (p. ej. "kicked" o un error) en su buffer si otro hilo
+            // está terminando un envío; cerrar en ese momento lo descarta. Esperamos a que se vacíe, con tope.
+            long deadline = System.nanoTime() + CLOSE_DRAIN_TIMEOUT_NS;
+            while ((session.getBufferSize() > 0 || session.getTimeSinceSendStarted() > 0) && System.nanoTime() < deadline) {
+                try {
+                    Thread.sleep(1);
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                    break;
+                }
+            }
             try {
                 session.close(new CloseStatus(code, reason));
             } catch (Exception e) {
