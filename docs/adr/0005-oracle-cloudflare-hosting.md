@@ -1,5 +1,14 @@
 # ADR 0005: Hosting en Cloudflare Pages y Oracle Cloud Always Free
 
+## Estado
+Aceptada, con una excepción temporal (octubre de 2026): la señalización y coturn corren en una VM de AWS mientras dure un crédito de US$100, previsto para varios meses. Cuando se acabe, la idea es volver a Oracle Cloud Always Free (o al plan B). Todo lo demás de esta decisión sigue igual: Cloudflare Pages, proxy de Cloudflare para la señalización, `turn.` sin proxy y despliegue con Docker Compose y GHCR.
+
+Diferencias de la VM en AWS:
+- El firewall de la nube es el Security Group (mismos puertos que la Security List de Oracle, ver [primeros pasos](../primeros-pasos.md#3-cuenta-de-oracle-y-vm)). El Ubuntu de AWS no trae el REJECT por defecto de Oracle, así que el Security Group es el único filtro que deja el 8443 solo para Cloudflare.
+- La IP pública fija es una Elastic IP.
+- La imagen se publica para `linux/arm64` y `linux/amd64`, así que sirve con cualquier tipo de instancia.
+- Hay que vigilar el saldo del crédito y la salida de datos (TURN), que en AWS sí se cobra.
+
 ## Contexto
 Meta de costo: US$0 al mes más el dominio. TURN consume ancho de banda de salida y necesita UDP y puertos propios.
 
