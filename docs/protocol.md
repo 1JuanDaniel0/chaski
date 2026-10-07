@@ -78,6 +78,7 @@ HKDF-SHA256 (WebCrypto), `salt` = 0 bytes, `ikm` = `s`:
 - Solo enruta. NUNCA interpreta ni registra `data`.
 - Al reenviar `signal`, reemplaza `to` por `from` (el `peerId` real del remitente) y conserva `seq` y `data`.
 - Cuando un socket se cierra, avisa `peer-left` al resto y lo saca de la sala. Sala vacía = sala borrada.
+  - El cliente ignora `peer-left` si ya tiene el DataChannel abierto con ese dispositivo: solo cerró el WebSocket, no la conexión directa. La salida real se detecta cuando el canal se cierra o ICE pasa a `failed`.
 
 ## 4. Señalización cifrada
 
