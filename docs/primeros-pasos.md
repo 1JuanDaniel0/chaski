@@ -15,6 +15,8 @@ Checklist en orden. Reemplaza `chaski.me` por tu dominio real en: `infra/docker-
 
 ## 3. Cuenta de Oracle y VM
 
+> **Hoy la VM está en AWS**, de forma temporal mientras dure el crédito (ver [ADR 0005](adr/0005-oracle-cloudflare-hosting.md)). En AWS los pasos equivalen: instancia EC2 con Ubuntu, Elastic IP en vez de IP reservada y Security Group con los mismos puertos de la tabla. `provision-vm.sh` instala Docker y agrega sus reglas igual, pero el Ubuntu de AWS acepta todo por defecto en iptables, así que **quien limita el 8443 a los rangos de Cloudflare es el Security Group**: no lo abras a 0.0.0.0/0. Para la IP privada de `TURN_EXTERNAL_IP` usa la de `ip a` en la instancia. Los pasos de abajo quedan para cuando se vuelva a Oracle.
+
 - [ ] Crea la cuenta de Oracle Cloud (Always Free). Pide tarjeta para verificar identidad.
 - [ ] Crea una instancia **Ampere A1** (ARM), Ubuntu 22.04 o 24.04, 2 OCPU y 12 GB de RAM sobran. Si sale "Out of capacity", prueba otro dominio de disponibilidad o más tarde.
 - [ ] Sube tu llave SSH pública al crearla.
@@ -62,7 +64,42 @@ Checklist en orden. Reemplaza `chaski.me` por tu dominio real en: `infra/docker-
 - [ ] `cp infra/.env.example infra/.env` y rellena `TURN_SECRET` (`openssl rand -hex 32`), `TURN_EXTERNAL_IP` y `SIGNAL_TAG`.
 - [ ] Primer despliegue: `infra/scripts/deploy.sh` (necesita que la imagen ya esté en GHCR: haz un push a `main` que toque `apps/signal`).
 - [ ] En GitHub, vuelve el paquete `chasqui-signal` público, o haz `docker login ghcr.io` en la VM con un token de solo lectura.
-- [ ] Prueba: `curl -I https://signal.<dominio>` y abre `app.<dominio>` en dos dispositivos.
+- [ ] Prueba: `curl -I https://signal.<dominio>` y sigue la [prueba de punta a punta](#prueba-de-punta-a-punta).
+
+### Prueba de punta a punta
+
+Comprueba por separado la señalización, el relevo TURN y luego una transferencia real entre dos redes distintas (por ejemplo, la PC en el wifi de casa o del trabajo y el celular con datos móviles, sin wifi).
+
+**1. Señalización (desde cualquier PC con Node 22):**
+
+```bash
+node infra/scripts/smoke-signal.mjs wss://signal.<dominio>/ws https://<dominio>
+```
+
+Abre dos WebSocket con el `Origin` indicado, los une a una sala nueva y comprueba `joined`, `peer-joined` y el reenvío de un `signal`. Al final imprime las credenciales TURN que entrega el servidor (duran `TURN_TTL_SECONDS`). Si falla al abrir, revisa que el origen esté en `ALLOWED_ORIGINS` y que el proxy de Cloudflare deje pasar WebSocket. Si avisa que `joined` no trae `turn`, faltan `TURN_SECRET` o `TURN_URLS`.
+
+**2. TURN (en cada una de las dos redes):**
+
+- [ ] Abre [Trickle ICE](https://webrtc.github.io/samples/src/content/peerconnection/trickle-ice/), borra el servidor por defecto y agrega cada URI que imprimió el script con su `username` y `credential`.
+- [ ] Elige "relay" en "ICE Transport Policy" (así solo salen candidatos del relevo) y pulsa "Gather candidates".
+- [ ] Debe aparecer al menos un candidato `relay` con la IP pública de la VM. Si `turn:...?transport=udp` no da nada pero `turns:...:443` sí, esa red bloquea UDP y el relevo por 443 es el que la salva.
+- [ ] Si no aparece ningún `relay`: revisa el firewall de la nube (3478 TCP/UDP, 443 TCP, 49160-49360 UDP), que `TURN_EXTERNAL_IP` sea `IPpública/IPprivada` y que el certificado de `turn.<dominio>` no haya vencido.
+
+**3. Transferencia real entre dos redes:**
+
+- [ ] En la PC abre `https://<dominio>` y, en otra pestaña, `chrome://webrtc-internals`.
+- [ ] Escanea el QR con el celular en datos móviles. Ambos deben mostrar "Conectado".
+- [ ] Manda un archivo de unos MB y un texto en cada sentido.
+- [ ] En `webrtc-internals`, busca el par de candidatos `succeeded` y `nominated` y anota el tipo local y remoto (`host`, `srflx` o `relay`).
+- [ ] En la VM, mira qué rutas reportaron los clientes: `curl -s localhost:9090/actuator/prometheus | grep chasqui_reports`.
+
+Si el par elegido es `srflx`, la conexión fue directa y TURN no se usó; es lo normal. Para que pase por el relevo, repite con una red que bloquee UDP (algunas redes corporativas o de universidad) o con datos móviles en ambos lados si el operador usa CGNAT.
+
+**Resultados:** anota cada prueba aquí.
+
+| Fecha | Red PC | Red celular | Señalización | TURN udp / tcp / tls | Ruta elegida | Notas |
+|-------|--------|-------------|--------------|----------------------|--------------|-------|
+| 2026-10-07 | PC Windows (wifi) | Android, Chrome, datos móviles 5G | OK (script de humo) | OK / OK / OK en ambas redes, relay 54.207.232.193 | Directa: `prflx` (PC) ↔ `srflx` (celular), UDP, RTT 36-230 ms | Foto y archivo en ambos sentidos OK. TURN no hizo falta en la app. El ICE pasó a `disconnected` y volvió a `connected` dos veces sin cortar la transferencia. Un aviso 701 en Trickle ICE de la PC no impidió los relay |
 
 ## 8. Secretos y entorno de GitHub
 
