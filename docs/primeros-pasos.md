@@ -15,6 +15,8 @@ Checklist en orden. Reemplaza `chaski.me` por tu dominio real en: `infra/docker-
 
 ## 3. Cuenta de Oracle y VM
 
+> **Hoy la VM está en AWS**, de forma temporal mientras dure el crédito (ver [ADR 0005](adr/0005-oracle-cloudflare-hosting.md)). En AWS los pasos equivalen: instancia EC2 con Ubuntu, Elastic IP en vez de IP reservada y Security Group con los mismos puertos de la tabla. `provision-vm.sh` instala Docker y agrega sus reglas igual, pero el Ubuntu de AWS acepta todo por defecto en iptables, así que **quien limita el 8443 a los rangos de Cloudflare es el Security Group**: no lo abras a 0.0.0.0/0. Para la IP privada de `TURN_EXTERNAL_IP` usa la de `ip a` en la instancia. Los pasos de abajo quedan para cuando se vuelva a Oracle.
+
 - [ ] Crea la cuenta de Oracle Cloud (Always Free). Pide tarjeta para verificar identidad.
 - [ ] Crea una instancia **Ampere A1** (ARM), Ubuntu 22.04 o 24.04, 2 OCPU y 12 GB de RAM sobran. Si sale "Out of capacity", prueba otro dominio de disponibilidad o más tarde.
 - [ ] Sube tu llave SSH pública al crearla.
