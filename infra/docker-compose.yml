@@ -1,4 +1,5 @@
-# Producción: VM Oracle Cloud Always Free (ARM, linux/arm64).
+# Producción: hoy una VM en AWS (temporal); el destino previsto es Oracle Cloud
+# Always Free (ARM). La imagen se publica para linux/arm64 y linux/amd64.
 # Uso: copia .env.example a .env, rellénalo y ejecuta scripts/deploy.sh
 name: chasqui
 

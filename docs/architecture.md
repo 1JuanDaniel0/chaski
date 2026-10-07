@@ -7,7 +7,7 @@ Cuatro piezas: la web estática, la señalización, el relevo TURN y los dos nav
 | Componente | Dónde corre | Qué hace |
 |------------|-------------|----------|
 | Web (PWA) | Cloudflare Pages | Sirve el cliente estático, genera el secreto y el QR, cifra y transfiere |
-| Señalización | VM Oracle, contenedor Spring Boot | Enruta mensajes cifrados entre los dos dispositivos de una sala y entrega credenciales TURN |
+| Señalización | VM en AWS (temporal, ver [ADR 0005](adr/0005-oracle-cloudflare-hosting.md)), contenedor Spring Boot | Enruta mensajes cifrados entre los dos dispositivos de una sala y entrega credenciales TURN |
 | coturn | La misma VM, red del host | Relevo de tráfico cuando no hay ruta directa (también STUN) |
 | Navegadores | PC y celular | Establecen el `RTCDataChannel` cifrado con DTLS |
 
@@ -71,7 +71,7 @@ Las salas viven en memoria (`ConcurrentHashMap`) en una sola instancia. Si el se
 | Pieza | Cómo se despliega |
 |-------|-------------------|
 | Web | Push a `main`, Cloudflare Pages construye y publica (vista previa por PR) |
-| Señalización | GitHub Actions construye la imagen arm64, la sube a GHCR y la VM la descarga con `infra/scripts/deploy.sh` |
+| Señalización | GitHub Actions construye la imagen (arm64 y amd64), la sube a GHCR y la VM la descarga con `infra/scripts/deploy.sh` |
 | coturn | Configuración versionada en `infra/coturn/` |
 | TLS | Cloudflare (web y señalización); certificado de origen de Cloudflare en 8443; Let's Encrypt para TURN |
 
