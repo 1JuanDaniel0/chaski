@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore, type DragEvent } from 'react';
 import { AnimatePresence, m } from 'motion/react';
-import { ArrowClockwise, DeviceMobile, DownloadSimple, Laptop, LockSimple, UploadSimple, X } from '@phosphor-icons/react';
+import { ArrowClockwise, DeviceMobile, DownloadSimple, Laptop, LockSimple, Monitor, Moon, Sun, UploadSimple, X } from '@phosphor-icons/react';
 import { Controller, type Phase } from '../app/controller';
 import { Logo, LogoMark } from './brand/Logo';
 import { PairScreen } from './screens/PairScreen';
@@ -10,6 +10,7 @@ import { useLeaveGuard, useWakeLock } from './hooks';
 import { Composer, coarse } from './chat/Composer';
 import { TutorialDialog } from './tutorial/TutorialDialog';
 import { EASE, screen } from './motion';
+import { NEXT_THEME, THEME_LABEL, getThemePref, setThemePref } from './theme';
 
 type Stage = 'pair' | 'chat';
 const STAGE: Record<Phase, Stage> = {
@@ -36,6 +37,8 @@ export function App() {
   const v = useSyncExternalStore(ctl.subscribe, ctl.getSnapshot);
   const [drag, setDrag] = useState(false);
   const [tutorial, setTutorial] = useState(false);
+  const [theme, setTheme] = useState(getThemePref);
+  const ThemeIcon = theme === 'light' ? Sun : theme === 'dark' ? Moon : Monitor;
   const connectedAt = useRef<number | null>(null);
   // Un error antes de emparejar se muestra en la pantalla de inicio, no en un chat vacío.
   const stage: Stage = v.phase === 'error' && connectedAt.current === null ? 'pair' : STAGE[v.phase];
@@ -102,20 +105,33 @@ export function App() {
             </m.div>
           )}
         </AnimatePresence>
-        {stage === 'chat' && live ? (
+        <div className="flex shrink-0 items-center gap-2">
           <button
             type="button"
-            onClick={() => ctl.end()}
-            aria-label="Terminar y borrar el chat"
-            title="Terminar y borrar el chat"
-            className="press inline-flex h-10 shrink-0 items-center gap-2 rounded-full bg-soft px-4 text-[15px] font-medium"
+            onClick={() => {
+              const next = NEXT_THEME[theme];
+              setThemePref(next);
+              setTheme(next);
+            }}
+            aria-label={`${THEME_LABEL[theme]}. Cambiar tema`}
+            title={THEME_LABEL[theme]}
+            className="press inline-flex size-10 items-center justify-center rounded-full bg-soft"
           >
-            <X size={16} weight="bold" aria-hidden="true" />
-            <span className="hidden sm:inline">Terminar</span>
+            <ThemeIcon size={18} aria-hidden="true" />
           </button>
-        ) : (
-          <span className="w-10" />
-        )}
+          {stage === 'chat' && live && (
+            <button
+              type="button"
+              onClick={() => ctl.end()}
+              aria-label="Terminar y borrar el chat"
+              title="Terminar y borrar el chat"
+              className="press inline-flex h-10 shrink-0 items-center gap-2 rounded-full bg-soft px-4 text-[15px] font-medium"
+            >
+              <X size={16} weight="bold" aria-hidden="true" />
+              <span className="hidden sm:inline">Terminar</span>
+            </button>
+          )}
+        </div>
       </header>
 
       <main className="flex min-h-0 flex-1 flex-col">
