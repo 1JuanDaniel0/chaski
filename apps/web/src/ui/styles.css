@@ -1,6 +1,9 @@
 @import 'tailwindcss';
 @import '@fontsource-variable/outfit';
 
+/* El tema lo decide public/theme.js (sistema, claro u oscuro) en <html data-theme>. */
+@custom-variant dark (&:where([data-theme='dark'], [data-theme='dark'] *));
+
 /*
   Sistema de diseño de Chaski: formato de chat, como WhatsApp.
   1 color de marca, tinta y grises; radios 8/12/20/24 y una sola fuente. Nada fuera de aquí.
@@ -54,23 +57,21 @@
   --c-danger: #d92d20;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    color-scheme: dark;
-    --c-paper: #0e0e11;
-    --c-surface: #17171c;
-    --c-ink: #f4f4f6;
-    --c-on-ink: #111114;
-    --c-muted: #93949e;
-    --c-line: #26262d;
-    --c-soft: #1c1c22;
-    --c-brand: #ff6a48;
-    --c-peach: #3a241c;
-    --c-mint: #142326;
-    --c-mint-ink: #7fd8dc;
-    --c-online: #3ddc84;
-    --c-danger: #ff8a80;
-  }
+:root[data-theme='dark'] {
+  color-scheme: dark;
+  --c-paper: #0e0e11;
+  --c-surface: #17171c;
+  --c-ink: #f4f4f6;
+  --c-on-ink: #111114;
+  --c-muted: #93949e;
+  --c-line: #26262d;
+  --c-soft: #1c1c22;
+  --c-brand: #ff6a48;
+  --c-peach: #3a241c;
+  --c-mint: #142326;
+  --c-mint-ink: #7fd8dc;
+  --c-online: #3ddc84;
+  --c-danger: #ff8a80;
 }
 
 @layer base {
