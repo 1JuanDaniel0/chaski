@@ -9,7 +9,7 @@ Pasa archivos y texto entre dos dispositivos escaneando un QR. Sin cuentas, sin 
 
 **Demo:** https://chaski.me
 
-<!-- TODO: GIF del flujo (PC muestra QR, celular escanea, archivo llega) -->
+![La PC muestra el QR, el celular lo escanea y le pasa una foto y un texto](docs/assets/demo.gif)
 
 ## Qué es
 
@@ -125,8 +125,14 @@ chasqui/
 | Fase | Requisitos |
 |------|------------|
 | **MVP** | RF1 emparejar por QR, RF2 archivos en ambos sentidos (varios, con progreso y cancelación), RF3 texto con copiado en un toque |
-| **Fase 2** | RF4 reconexión automática, RF5 menú Compartir de Android (share target), escritura directa a disco (streaming) |
+| **Fase 2** | RF5 menú Compartir de Android (share target) ✅, RF4 reconexión automática, escritura directa a disco (streaming) |
 | **Fase 3** | RF6 emparejar con código corto (PAKE), RF7 modo mostrador (QR fijo para un negocio que solo recibe) |
+
+**Ideas en evaluación** (se deciden según lo que pidan los usuarios):
+
+- **Dispositivos de confianza:** emparejar tu propia laptop una vez y reconectar sin QR (como KDE Connect o LocalSend). Se hará si muchos usuarios piden reconectar sus propios dispositivos.
+- **Cuentas con historial: descartado por ahora.** Choca con el caso de uso (la PC ajena, donde no se debe iniciar sesión) y con la promesa "nada se guarda", además de sumar costos de almacenamiento, riesgo de abuso y obligaciones de la Ley 29733.
+- **App en la Play Store:** primero como TWA (la misma PWA empaquetada); app nativa solo si hacen falta transferencias en segundo plano.
 
 ## Contribuir y seguridad
 

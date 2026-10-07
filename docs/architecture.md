@@ -52,6 +52,10 @@ sequenceDiagram
 
 El detalle de mensajes, formatos y límites está en [protocol.md](protocol.md).
 
+## Compartir desde Android (share target)
+
+El manifest declara un `share_target` (POST `multipart/form-data` a `/share`). Como Cloudflare Pages no recibe POST, lo atiende `public/sw.js`, un service worker que **solo** intercepta esa ruta: guarda los archivos y el texto en Cache Storage y redirige a `/?share`. La app los lee y **borra la caché en el acto**, así que lo compartido queda solo en memoria. Después el celular escanea el QR de la PC desde la propia app (`BarcodeDetector` y cámara trasera; no hay librería de QR en el bundle), se une a la sala y envía todo apenas se abre el canal. El service worker no cachea la app ni intercepta ninguna otra petición.
+
 ## Subdominios y puertos
 
 | Subdominio | Apunta a | Puertos | Por qué así |
