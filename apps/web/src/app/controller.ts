@@ -83,10 +83,25 @@ export class Controller {
     void this.start(secret, true);
   }
 
-  /** Terminar y limpiar: saca al otro dispositivo, borra el chat de la pantalla y genera un QR nuevo. */
+  /** Terminar y limpiar: borra el chat en los dos dispositivos, saca al otro y genera un QR nuevo. */
   end(): void {
+    this.manager?.sendEnd();
     if (this.view.isOwner && this.sig && this.remote) this.sig.kick(this.remote);
+    // Cerrar la conexión en el acto puede descartar el aviso "end": se cierra un momento después.
+    const link = this.link;
+    this.link = null;
+    if (link) setTimeout(() => link.close(), 1000);
     this.newRoom();
+  }
+
+  /** El otro pulsó "Terminar": se borra el chat. La PC (dueña) vuelve al QR; el invitado ve el aviso. */
+  private ended(): void {
+    if (this.view.isOwner) {
+      this.newRoom();
+      return;
+    }
+    this.teardown();
+    this.set({ phase: 'kicked', items: [] });
   }
 
   /** Abre el escáner para unirse a la sala de otro dispositivo (celular sin "Compartir"). */
@@ -191,8 +206,9 @@ export class Controller {
             this.peerGone();
             break;
           case 'kicked':
+            // Solo llega por "Terminar" del dueño: se borra el chat igual que con el aviso "end".
             this.teardown();
-            this.set({ phase: 'kicked' });
+            this.set({ phase: 'kicked', items: [] });
             break;
           case 'error':
             this.set({ phase: 'error', error: ERRORS[msg.code] ?? `Error del servidor (${msg.code}).` });
@@ -237,7 +253,9 @@ export class Controller {
     };
     const open = () => {
       if (gen !== this.gen) return;
-      const mgr = new TransferManager(adapter, (items) => gen === this.gen && this.set({ items }), this.view.isOwner);
+      const mgr = new TransferManager(adapter, (items) => gen === this.gen && this.set({ items }), this.view.isOwner, () => {
+        if (gen === this.gen) this.ended();
+      });
       this.manager = mgr;
       ch.onmessage = (e) => mgr.onMessage(e.data);
       this.linked = true;

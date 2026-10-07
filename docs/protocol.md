@@ -115,7 +115,10 @@ Un solo `RTCDataChannel` con etiqueta `chasqui`, `ordered: true`, confiable, `bi
 { "t": "file-cancel", "id": 1, "reason": "user" | "too-large" | "error" }
 { "t": "file-done",   "id": 1 }
 { "t": "text",        "id": 2, "text": "hola" }
+{ "t": "end" }
 ```
+
+- `end` lo envía quien pulsa "Terminar", justo antes de cerrar. El receptor borra su chat: el dueño vuelve al QR y el invitado queda en la pantalla de sesión terminada.
 
 - `id`: entero sin signo de 32 bits, único por remitente durante la sesión.
 - En v1 el receptor acepta solo (`file-accept`) si `size <= 500 MB`; si no, responde
