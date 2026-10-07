@@ -44,6 +44,7 @@ Checklist en orden. Reemplaza `chaski.me` por tu dominio real en: `infra/docker-
 
 - [ ] En Pages: conecta el repo, directorio raíz `apps/web`, comando `pnpm build`, salida `dist`, y añade el dominio personalizado `app.<dominio>`.
 - [ ] En SSL/TLS de Cloudflare pon el modo **Full (strict)**.
+- [ ] **Origin Rule** para la señalización: el navegador entra por el 443, pero en la VM el 443 es de coturn y la señalización escucha en el 8443. En Cloudflare, Rules, Origin Rules, Create rule: `Hostname` igual a `signal.<dominio>`, y en **Destination Port** elige *Rewrite to* `8443`. Sin esta regla la app muestra "Sin conexión con el servidor".
 
 ## 5. Certificado de origen para la señalización (8443)
 
