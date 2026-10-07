@@ -83,6 +83,18 @@ export class Controller {
     void this.start(secret, true);
   }
 
+  /** Terminar y limpiar: saca al otro dispositivo, borra el chat de la pantalla y genera un QR nuevo. */
+  end(): void {
+    if (this.view.isOwner && this.sig && this.remote) this.sig.kick(this.remote);
+    this.newRoom();
+  }
+
+  /** Abre el escáner para unirse a la sala de otro dispositivo (celular sin "Compartir"). */
+  scan(): void {
+    this.teardown();
+    this.set({ ...INITIAL, phase: 'scan' });
+  }
+
   /** Descarta lo compartido y sigue con el flujo normal. */
   discardShare(): void {
     this.set({ outbox: null });

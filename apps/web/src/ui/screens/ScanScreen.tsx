@@ -80,7 +80,7 @@ export function ScanScreen({ outbox, onScan, onCancel }: { outbox: Shared | null
   return (
     <m.div variants={stagger} initial="hidden" animate="show" className="flex flex-1 flex-col gap-6 py-4">
       <m.h1 variants={rise} className="text-[36px] font-semibold leading-[1] tracking-[-0.045em]">
-        Envíalo a una PC
+        {outbox ? 'Envíalo a una PC' : 'Escanea el QR de la PC'}
       </m.h1>
 
       <m.ul variants={rise} className="flex flex-col items-end gap-2" aria-label="Para enviar">

@@ -6,7 +6,7 @@ import { formatSize } from '../../lib/format';
 import type { TransferItem } from '../../transfer/manager';
 import { EASE } from '../motion';
 
-function download(item: TransferItem): void {
+export function download(item: TransferItem): void {
   if (!item.blob) return;
   const url = URL.createObjectURL(item.blob);
   const a = document.createElement('a');
@@ -91,6 +91,25 @@ function openPdf(blob: Blob): void {
   setTimeout(() => URL.revokeObjectURL(url), 60_000);
 }
 
+/** Velocidad en bytes/s de los últimos ~3 s de un envío en curso; null mientras no hay datos suficientes. */
+function useRate(bytes: number, running: boolean): number | null {
+  const samples = useRef<{ t: number; b: number }[]>([]);
+  if (!running) {
+    samples.current = [];
+    return null;
+  }
+  const now = performance.now();
+  const s = samples.current;
+  if (s.at(-1)?.b !== bytes) s.push({ t: now, b: bytes });
+  while (s.length > 2 && now - s[0]!.t > 3000) s.shift();
+  const first = s[0]!;
+  const last = s.at(-1)!;
+  const secs = (last.t - first.t) / 1000;
+  return secs >= 0.5 ? (last.b - first.b) / secs : null;
+}
+
+const eta = (secs: number) => (secs < 60 ? `${Math.max(1, Math.round(secs))} s` : `${Math.round(secs / 60)} min`);
+
 function Progress({ pct, mine }: { pct: number; mine: boolean }) {
   return (
     <div
@@ -120,6 +139,9 @@ function Bubble({ item, at, onCancel }: { item: TransferItem; at: number; onCanc
   const isImage = !!visual;
   const fail = () => setBroken(true);
 
+  const rate = useRate(item.transferred, running && item.status === 'active');
+  const speed = rate && rate > 0 ? ` · ${formatSize(Math.round(rate))}/s · ${eta((item.size - item.transferred) / rate)}` : '';
+
   const ping = () => {
     setFlash(true);
     setTimeout(() => setFlash(false), 1600);
@@ -129,7 +151,7 @@ function Bubble({ item, at, onCancel }: { item: TransferItem; at: number; onCanc
   const status = failed
     ? (item.note ?? (item.status === 'cancelled' ? 'Cancelado' : 'Falló'))
     : running
-      ? `${mine ? 'Enviando' : 'Recibiendo'} ${Math.round(pct)} %`
+      ? `${mine ? 'Enviando' : 'Recibiendo'} ${Math.round(pct)} %${speed}`
       : formatSize(item.size);
 
   return (
@@ -176,8 +198,12 @@ function Bubble({ item, at, onCancel }: { item: TransferItem; at: number; onCanc
                 <span className="block truncate text-[16px] font-medium">{item.name}</span>
                 <span className={`flex items-center gap-1.5 text-[13px] ${tone}`}>
                   {status}
-                  <span aria-hidden="true">·</span>
-                  {clock(at)}
+                  {!running && (
+                    <>
+                      <span aria-hidden="true">·</span>
+                      {clock(at)}
+                    </>
+                  )}
                   {mine && done && <Checks size={15} weight="bold" className="text-on-ink/70" aria-label="Entregado" />}
                 </span>
               </span>
