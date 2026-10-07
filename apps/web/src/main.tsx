@@ -3,6 +3,7 @@ import { createRoot } from 'react-dom/client';
 import { LazyMotion, MotionConfig, domAnimation } from 'motion/react';
 import { App } from './ui/App';
 import './ui/styles.css';
+import { registerShareWorker } from './app/share';
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
@@ -13,3 +14,5 @@ createRoot(document.getElementById('root')!).render(
     </LazyMotion>
   </StrictMode>,
 );
+
+registerShareWorker();
