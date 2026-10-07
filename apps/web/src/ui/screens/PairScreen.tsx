@@ -1,21 +1,34 @@
 import { AnimatePresence, m } from 'motion/react';
-import { ArrowClockwise, LockSimple, PlayCircle } from '@phosphor-icons/react';
+import { ArrowClockwise, LockSimple, PlayCircle, Scan } from '@phosphor-icons/react';
+import { coarse } from '../chat/Composer';
 import { QrCode } from '../QrCode';
 import { LogoMark } from '../brand/Logo';
 import { fast, rise, stagger } from '../motion';
 
-const STEPS = ['Abre la cámara del celular', 'Apunta al código', 'Elige qué enviar'];
+// En el celular el flujo es al revés: abrir Chaski en la PC y escanear su QR desde aquí.
+const STEPS = canScanHere()
+  ? ['Abre chaski.me en la PC', 'Escanea su QR', 'Elige qué enviar']
+  : ['Abre la cámara del celular', 'Apunta al código', 'Elige qué enviar'];
+
+function canScanHere(): boolean {
+  return coarse && typeof window !== 'undefined' && !!window.BarcodeDetector;
+}
+
+/** En el celular, escanear desde la app (BarcodeDetector: Chrome en Android). */
+const canScan = canScanHere();
 
 /** PC esperando: un título que dice qué hacer, tres pasos y el QR grande. */
 export function PairScreen({
   shareUrl,
   error,
   onRetry,
+  onScan,
   onTutorial,
 }: {
   shareUrl: string | null;
   error: string | null;
   onRetry: () => void;
+  onScan: () => void;
   onTutorial: () => void;
 }) {
   if (error) return <Offline message={error} onRetry={onRetry} />;
@@ -29,8 +42,17 @@ export function PairScreen({
     >
       <m.section variants={rise} className="flex flex-col gap-8 md:gap-11">
         <h1 className="text-[44px] font-semibold leading-[0.98] tracking-[-0.045em] sm:text-[64px] lg:text-[88px]">
-          Pasa archivos
-          <br />a esta PC
+          {canScan ? (
+            <>
+              Pasa archivos
+              <br />a una PC
+            </>
+          ) : (
+            <>
+              Pasa archivos
+              <br />a esta PC
+            </>
+          )}
         </h1>
         <ol className="flex flex-col gap-4">
           {STEPS.map((s, i) => (
@@ -42,6 +64,16 @@ export function PairScreen({
             </li>
           ))}
         </ol>
+        {canScan && (
+          <button
+            type="button"
+            onClick={onScan}
+            className="press inline-flex h-14 w-full items-center justify-center gap-2 rounded-full bg-ink text-[16px] font-semibold text-on-ink"
+          >
+            <Scan size={20} weight="bold" aria-hidden="true" />
+            Escanear el QR de la PC
+          </button>
+        )}
         <button type="button" onClick={onTutorial} className="press inline-flex w-fit items-center gap-2 text-[16px] font-semibold text-brand">
           <PlayCircle size={22} weight="fill" aria-hidden="true" />
           Ver cómo funciona

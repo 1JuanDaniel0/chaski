@@ -13,7 +13,7 @@ Pasa archivos y texto entre dos dispositivos escaneando un QR. Sin cuentas, sin 
 
 ## Qué es
 
-Abres Chasqui en una PC (por ejemplo la del trabajo, la universidad o una cabina), escaneas el QR con tu celular y ya puedes mandar archivos o texto en ambos sentidos. Los datos viajan directo de un navegador a otro con WebRTC, cifrados de extremo a extremo. El servidor solo ayuda a que los dos dispositivos se encuentren y no puede leer lo que pasa.
+Abres Chaski en una PC (por ejemplo la del trabajo, la universidad o una cabina), escaneas el QR con tu celular y ya puedes mandar archivos o texto en ambos sentidos. Los datos viajan directo de un navegador a otro con WebRTC, cifrados de extremo a extremo. El servidor solo ayuda a que los dos dispositivos se encuentren y no puede leer lo que pasa.
 
 Pensado para mover algo a una PC ajena o poco confiable sin iniciar sesión de WhatsApp o correo en ella.
 
@@ -21,9 +21,11 @@ Pensado para mover algo a una PC ajena o poco confiable sin iniciar sesión de W
 
 Los **chasquis** eran los mensajeros del Imperio Inca: corrían por el Qhapaq Ñan en relevos y llevaban mensajes de un punto a otro. Aquí pasa igual: el mensaje va de un dispositivo a otro y nadie se queda con él.
 
+**Todo lo que hace y en qué se diferencia de WhatsApp Web, Drive, PairDrop o LocalSend:** [docs/caracteristicas.md](docs/caracteristicas.md).
+
 ## Cómo se usa
 
-1. En la PC abres la web de Chasqui. El QR aparece al instante.
+1. En la PC abres [chaski.me](https://chaski.me). El QR aparece al instante.
 2. Escaneas el QR con la cámara del celular y se abre la web.
 3. Ambos se conectan solos y muestran "Conectado".
 4. En el celular eliges archivos o escribes texto (también funciona al revés).
@@ -39,7 +41,7 @@ Los **chasquis** eran los mensajeros del Imperio Inca: corrían por el Qhapaq Ñ
 - **Sin scripts de terceros, sin cookies, sin analítica**, y con una CSP estricta.
 - **Código abierto** (AGPL-3.0): puedes revisarlo.
 
-Lo que Chasqui no puede hacer: proteger una PC de destino comprometida o con monitoreo. El cifrado protege el trayecto, no la PC. Más detalle en [docs/threat-model.md](docs/threat-model.md).
+Lo que Chaski no puede hacer: proteger una PC de destino comprometida o con monitoreo. El cifrado protege el trayecto, no la PC. Más detalle en [docs/threat-model.md](docs/threat-model.md).
 
 ## Arquitectura
 
