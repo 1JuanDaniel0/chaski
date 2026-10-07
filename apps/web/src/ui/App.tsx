@@ -1,11 +1,12 @@
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore, type DragEvent } from 'react';
 import { AnimatePresence, m } from 'motion/react';
-import { ArrowClockwise, DeviceMobile, Laptop, LockSimple, UploadSimple, X } from '@phosphor-icons/react';
+import { ArrowClockwise, DeviceMobile, DownloadSimple, Laptop, LockSimple, UploadSimple, X } from '@phosphor-icons/react';
 import { Controller, type Phase } from '../app/controller';
 import { Logo, LogoMark } from './brand/Logo';
 import { PairScreen } from './screens/PairScreen';
 import { ScanScreen } from './screens/ScanScreen';
-import { Thread } from './chat/Thread';
+import { Thread, download } from './chat/Thread';
+import { useLeaveGuard, useWakeLock } from './hooks';
 import { Composer, coarse } from './chat/Composer';
 import { TutorialDialog } from './tutorial/TutorialDialog';
 import { EASE, screen } from './motion';
@@ -39,6 +40,13 @@ export function App() {
   // Un error antes de emparejar se muestra en la pantalla de inicio, no en un chat vacío.
   const stage: Stage = v.phase === 'error' && connectedAt.current === null ? 'pair' : STAGE[v.phase];
   const live = v.phase === 'connected';
+  const busy = v.items.some((i) => i.status === 'pending' || i.status === 'active');
+  const received = v.items.filter((i) => i.dir === 'in' && i.kind === 'file' && i.status === 'done' && i.blob);
+  useWakeLock(busy);
+  useLeaveGuard(busy);
+
+  // Varias descargas seguidas: el navegador pide permiso una sola vez.
+  const downloadAll = () => received.forEach((item, n) => setTimeout(() => download(item), n * 350));
 
   useEffect(() => {
     ctl.init();
@@ -94,15 +102,16 @@ export function App() {
             </m.div>
           )}
         </AnimatePresence>
-        {stage === 'chat' && live && v.isOwner ? (
+        {stage === 'chat' && live ? (
           <button
             type="button"
-            onClick={() => ctl.kick()}
-            aria-label="Desconectar al otro dispositivo"
+            onClick={() => ctl.end()}
+            aria-label="Terminar y borrar el chat"
+            title="Terminar y borrar el chat"
             className="press inline-flex h-10 shrink-0 items-center gap-2 rounded-full bg-soft px-4 text-[15px] font-medium"
           >
             <X size={16} weight="bold" aria-hidden="true" />
-            <span className="hidden sm:inline">Desconectar</span>
+            <span className="hidden sm:inline">Terminar</span>
           </button>
         ) : (
           <span className="w-10" />
@@ -120,6 +129,7 @@ export function App() {
                   shareUrl={v.phase === 'connecting' ? null : v.shareUrl}
                   error={v.phase === 'error' ? (v.error ?? 'No se pudo conectar') : null}
                   onRetry={() => ctl.retry()}
+                  onScan={() => ctl.scan()}
                   onTutorial={() => setTutorial(true)}
                 />
               )}
@@ -136,6 +146,18 @@ export function App() {
                 </div>
               </div>
               <div className="mx-auto w-full max-w-[760px] shrink-0 px-3 pb-[max(12px,env(safe-area-inset-bottom))] pt-1 sm:px-4 sm:pb-6">
+                {received.length > 1 && (
+                  <div className="flex justify-center pb-2">
+                    <button
+                      type="button"
+                      onClick={downloadAll}
+                      className="press inline-flex h-10 items-center gap-2 rounded-full bg-ink px-4 text-[14px] font-semibold text-on-ink"
+                    >
+                      <DownloadSimple size={16} weight="bold" aria-hidden="true" />
+                      Descargar todo ({received.length})
+                    </button>
+                  </div>
+                )}
                 {live ? (
                   <Composer onFiles={(f) => ctl.sendFiles(f)} onText={(t) => ctl.sendText(t)} />
                 ) : (
