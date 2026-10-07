@@ -13,6 +13,8 @@ services:
       ALLOWED_ORIGINS: https://chaski.me,https://app.chaski.me
       TURN_URLS: turn:turn.chaski.me:3478?transport=udp,turn:turn.chaski.me:3478?transport=tcp,turns:turn.chaski.me:443?transport=tcp
       MANAGEMENT_SERVER_PORT: "9090"
+      # Actuator solo escucha en localhost: HTTP simple, sin heredar el TLS de 8443.
+      MANAGEMENT_SERVER_SSL_ENABLED: "false"
       # TLS de origen con el certificado de origen de Cloudflare (ver docs/primeros-pasos.md).
       # Ajusta estas propiedades si apps/signal usa otros nombres.
       SERVER_SSL_ENABLED: "true"
