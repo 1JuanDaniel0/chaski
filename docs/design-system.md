@@ -45,5 +45,8 @@ Todo vive en `apps/web/src/ui/styles.css`; los colores por defecto de Tailwind e
 
 ## Modo oscuro
 
-Los mismos tokens se redefinen con `prefers-color-scheme: dark`. El QR sigue negro sobre blanco
+Los mismos tokens se redefinen en `:root[data-theme='dark']`. El botón del encabezado alterna
+sistema → claro → oscuro (sistema por defecto). `public/theme.js` se carga en `<head>` antes de pintar,
+decide el tema y lo escribe en `<html data-theme>`; solo guarda la elección manual en `localStorage`
+(`chaski-theme`). La variante `dark:` de Tailwind sigue a ese atributo. El QR sigue negro sobre blanco
 en ambos modos porque es lo que las cámaras leen mejor.

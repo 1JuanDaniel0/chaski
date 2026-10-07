@@ -22,6 +22,7 @@ Chaski pasa archivos y texto entre tu celular y una PC escaneando un QR. Está p
 - **Progreso con velocidad y tiempo restante**, y botón para cancelar.
 - **La pantalla del celular no se apaga** mientras haya un envío en curso. Si se apagara, el envío se cortaría.
 - **Aviso al cerrar la pestaña** si algo está a medio enviar.
+- **Modo claro u oscuro:** sigue al sistema por defecto, y el botón del encabezado lo fija a mano en claro u oscuro.
 
 ### Ver y descargar
 - **Vistas previas:**
@@ -37,8 +38,8 @@ Chaski pasa archivos y texto entre tu celular y una PC escaneando un QR. Está p
 - **Directo entre los dos dispositivos** (WebRTC P2P). Los archivos no se suben a ningún servidor.
 - **Cifrado de extremo a extremo.** El secreto viaja en el QR y nunca llega al servidor. La negociación va cifrada con AES-GCM y los datos con DTLS.
 - **Salas de solo 2 dispositivos**, que expiran solas.
-- **"Terminar":** saca al otro dispositivo, borra el chat de la pantalla y genera un QR nuevo. Es lo que haces antes de irte de la cabina.
-- **Nada se guarda:** sin historial, sin cookies, sin analítica y sin scripts de terceros. La CSP es estricta.
+- **"Terminar":** borra el chat en los dos dispositivos, saca al otro y genera un QR nuevo, se pulse en la PC o en el celular. Es lo que haces antes de irte de la cabina. Si la conexión se corta sin pulsarlo, lo recibido se conserva para que puedas descargarlo.
+- **Nada se guarda:** sin historial, sin cookies, sin analítica y sin scripts de terceros. La CSP es estricta. Lo único que queda en el navegador es el tema si lo eliges a mano (claro u oscuro).
 - **Código abierto** (AGPL-3.0).
 
 ### Diseño
