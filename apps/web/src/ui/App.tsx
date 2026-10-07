@@ -25,7 +25,7 @@ const STAGE: Record<Phase, Stage> = {
 
 const ENDED: Partial<Record<Phase, string>> = {
   'peer-left': 'El otro dispositivo se desconectó',
-  kicked: 'Te desconectaron de la sala',
+  kicked: 'El otro dispositivo terminó la sesión y se borró el chat',
 };
 
 const isPhone = (label: string | null) => !!label && /Android|iOS/.test(label);

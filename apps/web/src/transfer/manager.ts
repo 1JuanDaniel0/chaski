@@ -47,6 +47,7 @@ export class TransferManager {
     private ch: ChannelLike,
     private onChange: (items: TransferItem[]) => void,
     isOwner = true,
+    private onEnd: () => void = () => undefined,
   ) {
     // ids disjuntos por lado (dueño impares, invitado pares) para que file-cancel no sea ambiguo.
     this.nextId = isOwner ? 1 : 2;
@@ -92,6 +93,11 @@ export class TransferManager {
     this.sendCtl({ t: 'file-offer', id, name: file.name, size: file.size, mime: file.type || 'application/octet-stream' });
   }
 
+  /** Avisa al otro que se terminó la sesión, para que borre su chat. */
+  sendEnd(): void {
+    this.sendCtl({ t: 'end' });
+  }
+
   cancel(dir: 'in' | 'out', id: number): void {
     const it = this.items.get(`${dir}:${id}`);
     if (!it || (it.status !== 'pending' && it.status !== 'active')) return;
@@ -113,6 +119,9 @@ export class TransferManager {
 
   private onControl(c: Control): void {
     switch (c.t) {
+      case 'end':
+        this.onEnd();
+        break;
       case 'text':
         this.put({ key: `in:${c.id}`, id: c.id, dir: 'in', kind: 'text', name: 'Texto', mime: 'text/plain', size: c.text.length, transferred: c.text.length, status: 'done', text: c.text });
         break;

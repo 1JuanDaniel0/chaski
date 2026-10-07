@@ -60,6 +60,7 @@ describe('control', () => {
     expect(parseControl('{"t":"x","id":1}')).toBeNull();
     expect(parseControl('no json')).toBeNull();
     expect(parseControl('{"t":"file-offer","id":1,"name":"a","size":-5,"mime":""}')).toBeNull();
+    expect(parseControl('{"t":"end"}')).toEqual({ t: 'end' });
   });
 });
 
@@ -113,6 +114,18 @@ describe('TransferManager', () => {
     // ids disjuntos entre lados
     B.sendText('x');
     expect(ib.filter((i) => i.dir === 'out')[0]!.id % 2).toBe(0);
+  });
+
+  it('"Terminar" avisa al otro lado', async () => {
+    const [ca, cb, setA, setB] = pair();
+    let ended = 0;
+    const A = new TransferManager(ca, () => undefined, true);
+    const B = new TransferManager(cb, () => undefined, false, () => ended++);
+    setA((m) => A.onMessage(m));
+    setB((m) => B.onMessage(m));
+    A.sendEnd();
+    await new Promise((r) => setTimeout(r, 0));
+    expect(ended).toBe(1);
   });
 
   it('el receptor puede cancelar y el emisor lo refleja', async () => {

@@ -37,7 +37,7 @@ Chaski pasa archivos y texto entre tu celular y una PC escaneando un QR. Está p
 - **Directo entre los dos dispositivos** (WebRTC P2P). Los archivos no se suben a ningún servidor.
 - **Cifrado de extremo a extremo.** El secreto viaja en el QR y nunca llega al servidor. La negociación va cifrada con AES-GCM y los datos con DTLS.
 - **Salas de solo 2 dispositivos**, que expiran solas.
-- **"Terminar":** saca al otro dispositivo, borra el chat de la pantalla y genera un QR nuevo. Es lo que haces antes de irte de la cabina.
+- **"Terminar":** borra el chat en los dos dispositivos, saca al otro y genera un QR nuevo, se pulse en la PC o en el celular. Es lo que haces antes de irte de la cabina. Si la conexión se corta sin pulsarlo, lo recibido se conserva para que puedas descargarlo.
 - **Nada se guarda:** sin historial, sin cookies, sin analítica y sin scripts de terceros. La CSP es estricta.
 - **Código abierto** (AGPL-3.0).
 

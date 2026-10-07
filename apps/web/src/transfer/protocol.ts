@@ -5,7 +5,9 @@ export type Control =
   | { t: 'file-accept'; id: number }
   | { t: 'file-cancel'; id: number; reason: CancelReason }
   | { t: 'file-done'; id: number }
-  | { t: 'text'; id: number; text: string };
+  | { t: 'text'; id: number; text: string }
+  /** "Terminar": el otro debe borrar el chat. */
+  | { t: 'end' };
 
 const MAX_TEXT = 200_000;
 
@@ -23,6 +25,7 @@ export function parseControl(raw: string): Control | null {
   }
   if (typeof m !== 'object' || m === null) return null;
   const o = m as Record<string, unknown>;
+  if (o.t === 'end') return { t: 'end' };
   if (!isU32(o.id)) return null;
   switch (o.t) {
     case 'file-offer':
