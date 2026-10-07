@@ -4,8 +4,8 @@
   "description": "Pasa archivos y texto entre tus dispositivos. Directo y cifrado.",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#f6f3ed",
-  "theme_color": "#f6f3ed",
+  "background_color": "#ffffff",
+  "theme_color": "#ffffff",
   "lang": "es",
   "icons": [
     { "src": "/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
