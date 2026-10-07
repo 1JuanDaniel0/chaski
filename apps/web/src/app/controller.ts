@@ -145,7 +145,9 @@ export class Controller {
         sendSignal: sendSig,
         onChannel: (ch) => this.onChannel(ch, gen),
         onFailed: () => {
-          if (alive()) this.set({ phase: 'error', error: 'No se pudo establecer la conexión directa.' });
+          if (!alive()) return;
+          if (this.linked) this.peerGone();
+          else this.set({ phase: 'error', error: 'No se pudo establecer la conexión directa.' });
         },
       });
     };
@@ -182,12 +184,11 @@ export class Controller {
             break;
           case 'peer-left':
             if (msg.peerId !== this.remote) return;
-            this.manager?.close();
-            this.link?.close();
-            this.manager = null;
-            this.link = null;
-            this.remote = null;
-            this.set({ phase: 'peer-left' });
+            // Con el canal directo abierto, que el otro pierda el servidor no significa que se fue:
+            // Android corta el WebSocket al pasar Chrome a segundo plano (p. ej. al abrir el selector
+            // de archivos) y la conexión directa sigue viva. Solo cuenta como salida si el canal se cierra.
+            if (this.linked) return;
+            this.peerGone();
             break;
           case 'kicked':
             this.teardown();
@@ -213,6 +214,17 @@ export class Controller {
       },
     });
     this.sig.connect();
+  }
+
+  /** El otro dispositivo se fue de verdad: se cierra el enlace y se muestra el aviso. */
+  private peerGone(): void {
+    this.manager?.close();
+    this.link?.close();
+    this.manager = null;
+    this.link = null;
+    this.remote = null;
+    this.linked = false;
+    this.set({ phase: 'peer-left' });
   }
 
   private onChannel(ch: RTCDataChannel, gen: number): void {
@@ -241,7 +253,9 @@ export class Controller {
     ch.onbufferedamountlow = () => adapter.onDrain?.();
     ch.onclose = () => {
       adapter.onDrain?.();
-      if (gen === this.gen) this.manager?.close();
+      if (gen !== this.gen) return;
+      if (this.linked) this.peerGone();
+      else this.manager?.close();
     };
     if (ch.readyState === 'open') open();
     else ch.onopen = open;
