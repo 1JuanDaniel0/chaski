@@ -65,3 +65,4 @@ Chaski pasa archivos y texto entre tu celular y una PC escaneando un QR. Está p
 - Sin vista previa de Word, Excel ni PowerPoint: habría que subirlos a un servidor, y eso rompe la promesa de privacidad.
 - Máximo 500 MB por archivo: los archivos se arman en memoria antes de descargarse. La escritura directa a disco, que quitaría ese límite, está en la hoja de ruta.
 - Si se corta la conexión hay que volver a escanear. La reconexión automática está en la hoja de ruta.
+- Si un dispositivo pierde el servidor de señalización pero el canal directo sigue abierto (pasa en Android al abrir el selector de archivos, que manda Chrome a segundo plano), la sesión sigue. Solo se avisa "El otro dispositivo se desconectó" cuando se cierra el canal directo.
