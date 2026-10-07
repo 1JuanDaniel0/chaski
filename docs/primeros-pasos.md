@@ -96,7 +96,7 @@ Si el par elegido es `srflx`, la conexión fue directa y TURN no se usó; es lo 
 
 | Fecha | Red PC | Red celular | Señalización | TURN udp / tcp / tls | Ruta elegida | Notas |
 |-------|--------|-------------|--------------|----------------------|--------------|-------|
-| 2026-10-07 | PC Windows (wifi) | Android, Chrome, datos móviles 5G | OK (script de humo) | OK / OK / OK en ambas redes, relay 54.207.232.193 | (pendiente) | Trickle ICE en modo relay; un aviso 701 en la PC no impidió los tres relay |
+| 2026-10-07 | PC Windows (wifi) | Android, Chrome, datos móviles 5G | OK (script de humo) | OK / OK / OK en ambas redes, relay 54.207.232.193 | Directa: `prflx` (PC) ↔ `srflx` (celular), UDP, RTT 36-230 ms | Foto y archivo en ambos sentidos OK. TURN no hizo falta en la app. El ICE pasó a `disconnected` y volvió a `connected` dos veces sin cortar la transferencia. Un aviso 701 en Trickle ICE de la PC no impidió los relay |
 
 ## 8. Secretos y entorno de GitHub
 
