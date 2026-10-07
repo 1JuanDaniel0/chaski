@@ -1,3 +1,4 @@
+import { fileKind } from './filetype';
 import { describe, expect, it } from 'vitest';
 import { describeDevice } from './device';
 import { formatSize } from './format';
@@ -54,5 +55,27 @@ describe('describeDevice', () => {
     expect(describeDevice('Mozilla/5.0 (Linux; Android 14) AppleWebKit Chrome/120 Mobile Safari/537')).toBe('Android · Chrome');
     expect(describeDevice('Mozilla/5.0 (Windows NT 10.0) Chrome/120 Edg/120')).toBe('Windows · Edge');
     expect(describeDevice('Mozilla/5.0 (iPhone; CPU iPhone OS 17) Version/17 Safari/604')).toBe('iOS · Safari');
+  });
+});
+
+describe('fileKind', () => {
+  it('usa el mime cuando viene', () => {
+    expect(fileKind('video/mp4', 'clip')).toBe('video');
+    expect(fileKind('audio/mpeg', 'nota')).toBe('audio');
+    expect(fileKind('application/pdf', 'x')).toBe('pdf');
+    expect(fileKind('image/png', 'a.png')).toBe('image');
+  });
+  it('cae a la extensión si el mime está vacío', () => {
+    expect(fileKind('', 'VID_2026.MOV')).toBe('video');
+    expect(fileKind('', 'informe.docx')).toBe('word');
+    expect(fileKind('', 'notas.xlsx')).toBe('excel');
+    expect(fileKind('application/octet-stream', 'clase.pptx')).toBe('slides');
+    expect(fileKind('', 'Main.java')).toBe('text');
+    expect(fileKind('', 'fotos.zip')).toBe('archive');
+    expect(fileKind('', 'sin-extension')).toBe('other');
+  });
+  it('nunca previsualiza SVG', () => {
+    expect(fileKind('image/svg+xml', 'logo.svg')).toBe('other');
+    expect(fileKind('', 'logo.svg')).toBe('other');
   });
 });
