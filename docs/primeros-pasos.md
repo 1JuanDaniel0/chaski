@@ -96,7 +96,7 @@ Si el par elegido es `srflx`, la conexión fue directa y TURN no se usó; es lo 
 
 | Fecha | Red PC | Red celular | Señalización | TURN udp / tcp / tls | Ruta elegida | Notas |
 |-------|--------|-------------|--------------|----------------------|--------------|-------|
-| | | | | | | |
+| 2026-10-07 | PC Windows (red 1) | (pendiente) | OK (script de humo) | OK / OK / OK, relay 54.207.232.193 | (pendiente) | Trickle ICE solo desde la PC; un aviso 701 no impidió los tres relay |
 
 ## 8. Secretos y entorno de GitHub
 
