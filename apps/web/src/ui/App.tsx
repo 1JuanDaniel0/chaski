@@ -4,6 +4,7 @@ import { ArrowClockwise, DeviceMobile, Laptop, LockSimple, UploadSimple, X } fro
 import { Controller, type Phase } from '../app/controller';
 import { Logo, LogoMark } from './brand/Logo';
 import { PairScreen } from './screens/PairScreen';
+import { ScanScreen } from './screens/ScanScreen';
 import { Thread } from './chat/Thread';
 import { Composer, coarse } from './chat/Composer';
 import { TutorialDialog } from './tutorial/TutorialDialog';
@@ -11,6 +12,7 @@ import { EASE, screen } from './motion';
 
 type Stage = 'pair' | 'chat';
 const STAGE: Record<Phase, Stage> = {
+  scan: 'pair',
   starting: 'pair',
   waiting: 'pair',
   connecting: 'pair',
@@ -111,12 +113,16 @@ export function App() {
         <AnimatePresence mode="wait" initial={false}>
           {stage === 'pair' ? (
             <m.div key="pair" variants={screen} initial="hidden" animate="show" exit="exit" className="mx-auto flex w-full max-w-[1296px] flex-1 flex-col overflow-y-auto px-4 sm:px-8">
-              <PairScreen
-                shareUrl={v.phase === 'connecting' ? null : v.shareUrl}
-                error={v.phase === 'error' ? (v.error ?? 'No se pudo conectar') : null}
-                onRetry={() => ctl.retry()}
-                onTutorial={() => setTutorial(true)}
-              />
+              {v.phase === 'scan' ? (
+                <ScanScreen outbox={v.outbox} onScan={(secret) => ctl.join(secret)} onCancel={() => ctl.discardShare()} />
+              ) : (
+                <PairScreen
+                  shareUrl={v.phase === 'connecting' ? null : v.shareUrl}
+                  error={v.phase === 'error' ? (v.error ?? 'No se pudo conectar') : null}
+                  onRetry={() => ctl.retry()}
+                  onTutorial={() => setTutorial(true)}
+                />
+              )}
               <p className="hidden items-center gap-2 pb-8 text-[14px] text-muted md:flex">
                 <LockSimple size={16} aria-hidden="true" />
                 Cifrado de extremo a extremo. Nada pasa por un servidor ni se guarda.

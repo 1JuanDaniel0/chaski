@@ -5,8 +5,9 @@ import type { SignalPayload, TurnConfig } from '../signaling/messages';
 import { TransferManager, type ChannelLike, type TransferItem } from '../transfer/manager';
 import { PeerLink } from '../transfer/peer';
 import { QR_EXPIRY_MS, SIGNAL_URL } from './config';
+import { sharePending, takeShared, type Shared } from './share';
 
-export type Phase = 'starting' | 'waiting' | 'connecting' | 'connected' | 'peer-left' | 'kicked' | 'error';
+export type Phase = 'scan' | 'starting' | 'waiting' | 'connecting' | 'connected' | 'peer-left' | 'kicked' | 'error';
 
 export interface View {
   phase: Phase;
@@ -16,9 +17,11 @@ export interface View {
   items: TransferItem[];
   warning: string | null;
   error: string | null;
+  /** Lo compartido desde Android que espera a conectarse para enviarse. */
+  outbox: Shared | null;
 }
 
-const INITIAL: View = { phase: 'starting', shareUrl: null, isOwner: false, peerDevice: null, items: [], warning: null, error: null };
+const INITIAL: View = { phase: 'starting', shareUrl: null, isOwner: false, peerDevice: null, items: [], warning: null, error: null, outbox: null };
 
 const ERRORS: Record<string, string> = {
   'room-full': 'La sala ya tiene dos dispositivos.',
@@ -58,8 +61,13 @@ export class Controller {
     this.initialized = true;
     const m = /^#k=([A-Za-z0-9_-]+)$/.exec(location.hash);
     const scanned = m ? parseSecret(m[1]!) : null;
-    if (location.hash) history.replaceState(null, '', location.pathname + location.search);
-    void this.start(scanned ?? generateSecret(), scanned !== null);
+    const share = !scanned && sharePending();
+    if (location.hash || share) history.replaceState(null, '', location.pathname + (share ? '' : location.search));
+    if (share) {
+      // Vino de "Compartir con Chaski": primero hay que escanear el QR de la PC desde la app.
+      this.set({ phase: 'scan' });
+      void takeShared().then((outbox) => (outbox ? this.set({ outbox }) : this.newRoom()));
+    } else void this.start(scanned ?? generateSecret(), scanned !== null);
     // Si se cayó antes de emparejar, reintenta solo al volver la red.
     addEventListener('online', () => {
       if (this.view.phase === 'error' && !this.linked) this.retry();
@@ -68,6 +76,17 @@ export class Controller {
 
   newRoom(): void {
     void this.start(generateSecret(), false);
+  }
+
+  /** Se une a la sala de otro dispositivo (QR escaneado dentro de la app). */
+  join(secret: Uint8Array<ArrayBuffer>): void {
+    void this.start(secret, true);
+  }
+
+  /** Descarta lo compartido y sigue con el flujo normal. */
+  discardShare(): void {
+    this.set({ outbox: null });
+    this.newRoom();
   }
 
   /** Vuelve a intentar con la misma sala: el QR ya escaneado sigue sirviendo. */
@@ -96,6 +115,7 @@ export class Controller {
     const alive = () => gen === this.gen;
     this.set({
       ...INITIAL,
+      outbox: this.view.outbox,
       shareUrl: scanned ? null : `${location.origin}/#k=${secretToString(secret)}`,
     });
     const keys = await deriveKeys(secret);
@@ -199,6 +219,12 @@ export class Controller {
       this.linked = true;
       this.set({ phase: 'connected' });
       void this.reportRoute();
+      const out = this.view.outbox;
+      if (out) {
+        this.set({ outbox: null });
+        if (out.text) mgr.sendText(out.text);
+        for (const f of out.files) mgr.sendFile(f);
+      }
     };
     ch.onbufferedamountlow = () => adapter.onDrain?.();
     ch.onclose = () => {

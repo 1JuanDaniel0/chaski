@@ -18,7 +18,7 @@ function download(item: TransferItem): void {
   setTimeout(() => URL.revokeObjectURL(url), 60_000);
 }
 
-function FileIcon({ mime, name, size }: { mime: string; name: string; size: number }) {
+export function FileIcon({ mime, name, size }: { mime: string; name: string; size: number }) {
   const p = { size, 'aria-hidden': true } as const;
   if (mime.startsWith('image/')) return <FileImage {...p} />;
   if (mime === 'application/pdf' || name.toLowerCase().endsWith('.pdf')) return <FilePdf {...p} />;

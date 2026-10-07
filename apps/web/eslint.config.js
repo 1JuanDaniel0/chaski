@@ -12,4 +12,5 @@ export default tseslint.config(
     rules: { 'no-restricted-syntax': ['error', { selector: 'JSXAttribute[name.name="dangerouslySetInnerHTML"]', message: 'Prohibido.' }] },
   },
   { files: ['*.ts', '*.js'], languageOptions: { globals: globals.node } },
+  { files: ['public/sw.js'], languageOptions: { globals: globals.serviceworker } },
 );
