@@ -1,6 +1,7 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { AnimatePresence, m } from 'motion/react';
-import { Check, Checks, Copy, DownloadSimple, File, FileImage, FilePdf, FileText, FileZip, Warning, X } from '@phosphor-icons/react';
+import { ArrowSquareOut, Check, Checks, Copy, DownloadSimple, File, FileAudio, FileDoc, FileImage, FilePdf, FilePpt, FileText, FileVideo, FileXls, FileZip, Warning, X } from '@phosphor-icons/react';
+import { fileKind, type FileKind } from '../../lib/filetype';
 import { formatSize } from '../../lib/format';
 import type { TransferItem } from '../../transfer/manager';
 import { EASE } from '../motion';
@@ -18,27 +19,76 @@ function download(item: TransferItem): void {
   setTimeout(() => URL.revokeObjectURL(url), 60_000);
 }
 
+const ICONS = {
+  image: FileImage,
+  video: FileVideo,
+  audio: FileAudio,
+  pdf: FilePdf,
+  text: FileText,
+  word: FileDoc,
+  excel: FileXls,
+  slides: FilePpt,
+  archive: FileZip,
+  other: File,
+} satisfies Record<FileKind, unknown>;
+
 export function FileIcon({ mime, name, size }: { mime: string; name: string; size: number }) {
-  const p = { size, 'aria-hidden': true } as const;
-  if (mime.startsWith('image/')) return <FileImage {...p} />;
-  if (mime === 'application/pdf' || name.toLowerCase().endsWith('.pdf')) return <FilePdf {...p} />;
-  if (/zip|rar|7z|tar|gzip/.test(mime)) return <FileZip {...p} />;
-  if (mime.startsWith('text/')) return <FileText {...p} />;
-  return <File {...p} />;
+  const Icon = ICONS[fileKind(mime, name)];
+  return <Icon size={size} aria-hidden="true" />;
+}
+
+/** URL temporal de un blob local; se libera al desmontar. */
+function useObjectUrl(blob: Blob | undefined, type?: string): string | null {
+  const [url, setUrl] = useState<string | null>(null);
+  useEffect(() => {
+    if (!blob) return;
+    const u = URL.createObjectURL(type ? new Blob([blob], { type }) : blob);
+    setUrl(u);
+    return () => URL.revokeObjectURL(u);
+  }, [blob, type]);
+  return url;
 }
 
 const clock = (t: number) => new Date(t).toLocaleTimeString('es', { hour: '2-digit', minute: '2-digit' });
 
-/** Miniatura de una imagen recibida (blob local, nunca sale del navegador). */
-function Thumb({ blob }: { blob: Blob }) {
-  const [url, setUrl] = useState<string | null>(null);
-  useEffect(() => {
-    const u = URL.createObjectURL(blob);
-    setUrl(u);
-    return () => URL.revokeObjectURL(u);
-  }, [blob]);
+/** Vista previa en la burbuja: todo sale de blobs locales, nunca de la red. */
+function Preview({ kind, blob, onFail }: { kind: FileKind; blob: Blob; onFail: () => void }) {
+  const url = useObjectUrl(blob);
   if (!url) return null;
-  return <img src={url} alt="" className="block max-h-[260px] w-full rounded-[18px] object-cover" />;
+  if (kind === 'image') return <img src={url} alt="" onError={onFail} className="block max-h-[260px] w-full rounded-[18px] object-cover" />;
+  if (kind === 'video')
+    return <video src={url} controls playsInline preload="metadata" onError={onFail} className="block max-h-[320px] w-full rounded-[18px] bg-[#000]" />;
+  return null;
+}
+
+function AudioPlayer({ blob, onFail }: { blob: Blob; onFail: () => void }) {
+  const url = useObjectUrl(blob);
+  return url ? <audio src={url} controls preload="metadata" onError={onFail} className="mt-2 block h-10 w-full min-w-[220px]" /> : null;
+}
+
+/** Primeras líneas de un archivo de texto o código, siempre como texto plano. */
+function Snippet({ blob, mine }: { blob: Blob; mine: boolean }) {
+  const [text, setText] = useState('');
+  useEffect(() => {
+    let live = true;
+    void blob.slice(0, 2048).text().then((t) => live && setText(t.split('\n').slice(0, 6).join('\n')));
+    return () => {
+      live = false;
+    };
+  }, [blob]);
+  if (!text.trim()) return null;
+  return (
+    <pre className={`mt-2 max-h-[132px] overflow-hidden whitespace-pre-wrap break-all rounded-[12px] px-3 py-2 font-mono text-[12px] leading-[1.45] ${mine ? 'bg-on-ink/10' : 'bg-paper'}`}>
+      {text}
+    </pre>
+  );
+}
+
+/** Abre un PDF en el visor del navegador. El tipo se fuerza a PDF: nunca se abre HTML ni nada ejecutable. */
+function openPdf(blob: Blob): void {
+  const url = URL.createObjectURL(new Blob([blob], { type: 'application/pdf' }));
+  window.open(url, '_blank', 'noopener');
+  setTimeout(() => URL.revokeObjectURL(url), 60_000);
 }
 
 function Progress({ pct, mine }: { pct: number; mine: boolean }) {
@@ -62,8 +112,13 @@ function Bubble({ item, at, onCancel }: { item: TransferItem; at: number; onCanc
   const failed = item.status === 'cancelled' || item.status === 'error';
   const done = item.status === 'done';
   const pct = item.size > 0 ? Math.min(100, (item.transferred / item.size) * 100) : done ? 100 : 0;
-  const thumb = item.kind === 'file' && item.mime.startsWith('image/') ? (mine ? item.preview : done ? item.blob : undefined) : undefined;
-  const isImage = !!thumb && !failed;
+  const [broken, setBroken] = useState(false);
+  const kind = fileKind(item.mime, item.name);
+  // Lo propio se ve al instante; lo recibido, cuando termina de llegar.
+  const local = mine ? item.preview : done ? item.blob : undefined;
+  const visual = item.kind === 'file' && !failed && !broken && (kind === 'image' || kind === 'video') && local ? local : undefined;
+  const isImage = !!visual;
+  const fail = () => setBroken(true);
 
   const ping = () => {
     setFlash(true);
@@ -112,7 +167,7 @@ function Bubble({ item, at, onCancel }: { item: TransferItem; at: number; onCanc
           </>
         ) : (
           <>
-            {isImage && thumb && <Thumb blob={thumb} />}
+            {visual && <Preview kind={kind} blob={visual} onFail={fail} />}
             <div className={`flex items-center gap-3 ${isImage ? 'mt-2 px-2.5' : ''}`}>
               <span className={mine ? 'text-on-ink' : 'text-ink'}>
                 <FileIcon mime={item.mime} name={item.name} size={30} />
@@ -136,6 +191,17 @@ function Bubble({ item, at, onCancel }: { item: TransferItem; at: number; onCanc
                   <X size={14} weight="bold" />
                 </button>
               )}
+              {!mine && done && item.blob && kind === 'pdf' && (
+                <button
+                  type="button"
+                  onClick={() => openPdf(item.blob!)}
+                  aria-label="Abrir"
+                  title="Abrir"
+                  className="press flex size-10 shrink-0 items-center justify-center rounded-full bg-line"
+                >
+                  <ArrowSquareOut size={18} weight="bold" />
+                </button>
+              )}
               {!mine && done && item.blob && (
                 <button
                   type="button"
@@ -152,6 +218,8 @@ function Bubble({ item, at, onCancel }: { item: TransferItem; at: number; onCanc
               )}
             </div>
             {running && <div className={isImage ? 'px-2.5' : ''}><Progress pct={pct} mine={mine} /></div>}
+            {local && !failed && !broken && kind === 'audio' && <AudioPlayer blob={local} onFail={fail} />}
+            {local && !failed && kind === 'text' && <Snippet blob={local} mine={mine} />}
             {item.executable && !mine && (
               <p className="mt-2 flex items-center gap-1.5 text-[13px] font-medium text-danger">
                 <Warning size={14} weight="bold" aria-hidden="true" />
