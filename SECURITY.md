@@ -24,7 +24,7 @@ Intento responder en unos 7 días. Es un proyecto personal y de código abierto,
 - Alguien que **fotografía o copia el QR** mientras está visible (mitigado con salas de 2 dispositivos y expiración, pero es un riesgo aceptado).
 - Ataques que requieren acceso físico o control previo del navegador de la víctima.
 - Denegación de servicio por fuerza bruta de volumen (Cloudflare y los límites ya existen; sí interesan los DoS de bajo costo).
-- Reportes automáticos sin prueba de concepto, falta de cabeceras sin impacto real, y vulnerabilidades de servicios de terceros (Cloudflare, Oracle, GitHub).
+- Reportes automáticos sin prueba de concepto, falta de cabeceras sin impacto real, y vulnerabilidades de servicios de terceros (Cloudflare, AWS, Oracle, GitHub).
 - Redes con proxies que inspeccionan TLS (limitación conocida).
 
 ## Versiones con soporte
