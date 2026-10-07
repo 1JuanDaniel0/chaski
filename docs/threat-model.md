@@ -28,7 +28,7 @@ Firefox Send cerró en 2020 porque sus enlaces se usaban para repartir malware. 
 - **Metadatos.** Cada dispositivo ve la IP del otro (así funciona WebRTC). El servidor de señalización y TURN ven IPs y tamaños aproximados de tráfico. Los logs no guardan IPs ni `roomId`.
 - **Abuso de TURN y costo de salida.** Mitigado con cuotas; se vigila con métricas.
 - **Proxies con inspección TLS** pueden bloquear incluso TURN sobre 443.
-- **Dependencia de Oracle y Cloudflare** para disponibilidad (el contenido sigue cifrado aunque fallen).
+- **Dependencia del proveedor de la VM (hoy AWS) y de Cloudflare** para disponibilidad (el contenido sigue cifrado aunque fallen).
 - **PC de destino:** cualquier cosa que ocurra en ella queda fuera de lo que Chasqui puede proteger. Se recomienda borrar lo descargado al terminar.
 
 Fuera de alcance del cifrado: Chasqui no oculta que dos IPs se conectaron entre sí. En el futuro, el modo mostrador ofrecerá `iceTransportPolicy: "relay"` para ocultar la IP del otro lado.
