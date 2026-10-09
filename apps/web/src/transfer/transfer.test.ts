@@ -46,6 +46,18 @@ describe('troceo y reensamblado', () => {
       expect(Buffer.from(await blob.arrayBuffer()).equals(Buffer.from(data))).toBe(true);
     });
   }
+  it('byte-exacto al pasar por varios tramos', async () => {
+    const size = CHUNK_SIZE * 7 + 123;
+    const data = new Uint8Array(randomBytes(size));
+    const asm = new FileAssembler(size, CHUNK_SIZE * 3);
+    for (const fr of splitIntoFrames(9, data)) {
+      const f = decodeFrame(fr);
+      asm.addChunk(f.chunkIndex, f.payload);
+    }
+    const blob = asm.finish('video/mp4');
+    expect(blob.type).toBe('video/mp4');
+    expect(Buffer.from(await blob.arrayBuffer()).equals(Buffer.from(data))).toBe(true);
+  });
   it('detecta incompleto, desorden y exceso', () => {
     const a = new FileAssembler(20000);
     a.addChunk(0, new Uint8Array(CHUNK_SIZE));
