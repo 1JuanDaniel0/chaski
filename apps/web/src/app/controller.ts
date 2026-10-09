@@ -4,10 +4,10 @@ import { SignalingClient } from '../signaling/client';
 import type { SignalPayload, TurnConfig } from '../signaling/messages';
 import { TransferManager, type ChannelLike, type TransferItem } from '../transfer/manager';
 import { PeerLink } from '../transfer/peer';
-import { QR_EXPIRY_MS, SIGNAL_URL } from './config';
+import { QR_EXPIRY_MS, RECONNECT, SIGNAL_URL } from './config';
 import { sharePending, takeShared, type Shared } from './share';
 
-export type Phase = 'scan' | 'starting' | 'waiting' | 'connecting' | 'connected' | 'peer-left' | 'kicked' | 'error';
+export type Phase = 'scan' | 'starting' | 'waiting' | 'connecting' | 'connected' | 'reconnecting' | 'peer-left' | 'kicked' | 'error';
 
 export interface View {
   phase: Phase;
@@ -42,6 +42,8 @@ export class Controller {
   private initialized = false;
   private last: { secret: Uint8Array<ArrayBuffer>; scanned: boolean } | null = null;
   private linked = false;
+  /** Retoma la sesión ya: señalización caída o ruta directa cortada (al volver la red o la pestaña). */
+  private wake: (() => void) | null = null;
 
   subscribe = (l: () => void): (() => void) => {
     this.listeners.add(l);
@@ -68,9 +70,14 @@ export class Controller {
       this.set({ phase: 'scan' });
       void takeShared().then((outbox) => (outbox ? this.set({ outbox }) : this.newRoom()));
     } else void this.start(scanned ?? generateSecret(), scanned !== null);
-    // Si se cayó antes de emparejar, reintenta solo al volver la red.
+    // Si se cayó antes de emparejar, reintenta solo al volver la red. Si ya estaban conectados, retoma la sesión.
     addEventListener('online', () => {
       if (this.view.phase === 'error' && !this.linked) this.retry();
+      else this.wake?.();
+    });
+    // Android corta el WebSocket con Chrome en segundo plano: al volver a la pestaña se retoma sin esperar.
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'visible') this.wake?.();
     });
   }
 
@@ -132,6 +139,7 @@ export class Controller {
     this.link = null;
     this.sig = null;
     this.remote = null;
+    this.wake = null;
   }
 
   private async start(secret: Uint8Array<ArrayBuffer>, scanned: boolean): Promise<void> {
@@ -153,16 +161,89 @@ export class Controller {
     const sendSig = (p: SignalPayload) => {
       if (this.sig && this.remote) this.sig.sendSignal(this.remote, p).catch(() => undefined);
     };
+
+    // ---- Reconexión (RF4): solo una vez abierto el canal directo ----
+    let sigRetries = 0;
+    let sigTimer: ReturnType<typeof setTimeout> | null = null;
+    let downSince: number | null = null;
+    let checkTimer: ReturnType<typeof setTimeout> | null = null;
+    let lastRecover = -Infinity;
+
+    /** Vuelve a la sala con el mismo token: el servidor reemplaza el socket viejo y conserva el peerId. */
+    const reconnectSig = (now: boolean) => {
+      if (!alive() || !this.linked || !this.sig || this.sig.active) return;
+      if (sigTimer) clearTimeout(sigTimer);
+      const delay = now ? 0 : Math.min(RECONNECT.maxBackoffMs, 1000 * 2 ** sigRetries++);
+      sigTimer = setTimeout(() => {
+        sigTimer = null;
+        if (alive() && this.linked && this.sig && !this.sig.active) this.sig.connect();
+      }, delay);
+    };
+    /** Busca una ruta nueva sin cerrar el canal: quien ofreció reinicia ICE; el otro se lo pide. */
+    const recover = () => {
+      const link = this.link;
+      if (!alive() || !this.linked || !link) return;
+      const now = performance.now();
+      if (now - lastRecover < RECONNECT.minRestartGapMs) return;
+      lastRecover = now;
+      if (link.initiator) void link.restart().catch(() => undefined);
+      else sendSig({ kind: 'restart' });
+    };
+    const scheduleCheck = (ms: number) => {
+      if (checkTimer) clearTimeout(checkTimer);
+      checkTimer = setTimeout(check, ms);
+    };
+    /** Mientras la ruta directa esté caída: avisa, reintenta cada tanto y se rinde tras un rato. */
+    const check = () => {
+      checkTimer = null;
+      if (!alive() || !this.linked || downSince === null) return;
+      if (performance.now() - downSince >= RECONNECT.giveUpMs) {
+        this.peerGone();
+        return;
+      }
+      if (this.view.phase === 'connected') this.set({ phase: 'reconnecting' });
+      if (this.sig && !this.sig.active && !sigTimer) reconnectSig(true);
+      recover();
+      scheduleCheck(RECONNECT.retryMs);
+    };
+    const onState = (state: RTCPeerConnectionState) => {
+      if (!alive() || !this.linked) return;
+      if (state === 'connected') {
+        downSince = null;
+        if (checkTimer) clearTimeout(checkTimer);
+        checkTimer = null;
+        if (this.view.phase === 'reconnecting') this.set({ phase: 'connected' });
+      } else if (state === 'disconnected' || state === 'failed') {
+        // "disconnected" suele arreglarse solo en un par de segundos; "failed" ya no.
+        if (downSince === null) downSince = performance.now();
+        if (state === 'failed') scheduleCheck(0);
+        else if (!checkTimer) scheduleCheck(RECONNECT.graceMs);
+      }
+    };
+    this.wake = () => {
+      if (!alive() || !this.linked || !this.sig) return;
+      if (this.sig.active) this.sig.probe();
+      else {
+        sigRetries = 0;
+        reconnectSig(true);
+      }
+      if (this.link && this.link.state !== 'connected') recover();
+    };
+
     const makeLink = (initiator: boolean) => {
+      downSince = null;
+      lastRecover = -Infinity;
+      if (checkTimer) clearTimeout(checkTimer);
+      checkTimer = null;
       this.link = new PeerLink({
         turn,
         initiator,
         sendSignal: sendSig,
         onChannel: (ch) => this.onChannel(ch, gen),
+        onState,
         onFailed: () => {
-          if (!alive()) return;
-          if (this.linked) this.peerGone();
-          else this.set({ phase: 'error', error: 'No se pudo establecer la conexión directa.' });
+          // Con el canal abierto lo maneja onState (reconexión); antes de eso, no hubo ruta.
+          if (alive() && !this.linked) this.set({ phase: 'error', error: 'No se pudo establecer la conexión directa.' });
         },
       });
     };
@@ -174,6 +255,14 @@ export class Controller {
           case 'joined': {
             joined = true;
             turn = msg.turn;
+            if (this.linked) {
+              // Volvió a la sala tras perder la señalización: el canal directo sigue siendo el mismo.
+              sigRetries = 0;
+              this.link?.setTurn(turn);
+              if (msg.peers[0]) this.remote = msg.peers[0];
+              if (this.link?.state !== 'connected') recover();
+              break;
+            }
             const owner = msg.peers.length === 0;
             this.set({ isOwner: owner });
             if (owner) {
@@ -188,6 +277,12 @@ export class Controller {
             break;
           }
           case 'peer-joined':
+            if (this.linked) {
+              // El otro volvió a la sala (con otro peerId si el servidor ya había visto caer su socket).
+              this.remote = msg.peerId;
+              if (this.link?.state !== 'connected') recover();
+              break;
+            }
             if (this.remote) return;
             this.remote = msg.peerId;
             if (this.expiry) clearTimeout(this.expiry);
@@ -211,6 +306,9 @@ export class Controller {
             this.set({ phase: 'kicked', items: [] });
             break;
           case 'error':
+            // Con la sesión en curso, un rechazo al volver a la sala (p. ej. room-full mientras el servidor no ve
+            // caer el socket viejo) solo cierra el WebSocket: onClose reintenta.
+            if (this.linked) break;
             this.set({ phase: 'error', error: ERRORS[msg.code] ?? `Error del servidor (${msg.code}).` });
             break;
         }
@@ -218,6 +316,7 @@ export class Controller {
       onSignal: (from, p) => {
         if (!alive() || from !== this.remote) return;
         if (p.kind === 'hello') this.set({ peerDevice: cleanDeviceLabel(p.device) });
+        else if (p.kind === 'restart') recover();
         else void this.link?.handleSignal(p).catch(() => undefined);
       },
       onTamper: () => {
@@ -225,10 +324,11 @@ export class Controller {
       },
       onClose: () => {
         if (!alive()) return;
-        if (!joined) this.set({ phase: 'error', error: 'Sin conexión con el servidor' });
+        if (this.linked) reconnectSig(false);
+        else if (!joined) this.set({ phase: 'error', error: 'Sin conexión con el servidor' });
         else if (this.view.phase === 'waiting' && !scanned) this.newRoom();
       },
-    });
+    }, secretToString(generateSecret()));
     this.sig.connect();
   }
 

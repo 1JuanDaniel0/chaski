@@ -12,6 +12,7 @@ import org.springframework.stereotype.Component;
 public class ClientMessageParser {
     private static final ObjectMapper MAPPER = new ObjectMapper();
     private static final Pattern ROOM_ID = Pattern.compile("^[A-Za-z0-9_-]{22}$");
+    private static final Pattern TOKEN = ROOM_ID;
     private static final Set<String> ROUTES = Set.of("host", "srflx", "relay", "failed");
     private static final int MAX_PEER_ID = 64;
 
@@ -62,7 +63,14 @@ public class ClientMessageParser {
         if (roomId == null || !ROOM_ID.matcher(roomId).matches()) {
             throw bad("invalid roomId");
         }
-        return new ClientMessage.Join(roomId);
+        String resume = null;
+        if (n.has("resume")) {
+            resume = string(n, "resume");
+            if (resume == null || !TOKEN.matcher(resume).matches()) {
+                throw bad("invalid resume");
+            }
+        }
+        return new ClientMessage.Join(roomId, resume);
     }
 
     private static String string(JsonNode n, String field) {

@@ -127,7 +127,7 @@ chasqui/
 | Fase | Requisitos |
 |------|------------|
 | **MVP** | RF1 emparejar por QR, RF2 archivos en ambos sentidos (varios, con progreso y cancelación), RF3 texto con copiado en un toque |
-| **Fase 2** | RF5 menú Compartir de Android (share target) ✅, RF4 reconexión automática, escritura directa a disco (streaming) |
+| **Fase 2** | RF5 menú Compartir de Android (share target) ✅, RF4 reconexión automática ✅, escritura directa a disco (streaming) |
 | **Fase 3** | RF6 emparejar con código corto (PAKE), RF7 modo mostrador (QR fijo para un negocio que solo recibe) |
 
 **Ideas en evaluación** (se deciden según lo que pidan los usuarios):

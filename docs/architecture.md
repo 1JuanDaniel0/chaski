@@ -68,7 +68,7 @@ Además, la VM expone el puerto de gestión de Spring Actuator (9090) solo en `1
 
 ## Estado del servidor
 
-Las salas viven en memoria (`ConcurrentHashMap`) en una sola instancia. Si el servidor se reinicia, las salas se pierden y los clientes deben volver a unirse (RF4 en Fase 2 lo automatiza). Escalar a varias instancias requeriría Redis pub/sub o enrutar por `roomId`; el MVP no lo necesita.
+Las salas viven en memoria (`ConcurrentHashMap`) en una sola instancia. Si el servidor se reinicia, las salas se pierden y los clientes vuelven a unirse solos sin cortar la conexión directa (reconexión, [protocolo §3.5](protocol.md#35-reconexión-rf4)). Escalar a varias instancias requeriría Redis pub/sub o enrutar por `roomId`; el MVP no lo necesita.
 
 ## Despliegue
 

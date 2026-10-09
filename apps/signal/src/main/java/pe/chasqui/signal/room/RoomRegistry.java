@@ -1,5 +1,7 @@
 package pe.chasqui.signal.room;
 
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
 import java.security.SecureRandom;
 import java.time.Clock;
 import java.util.ArrayList;
@@ -22,9 +24,15 @@ public class RoomRegistry {
     private static final Logger log = LoggerFactory.getLogger(RoomRegistry.class);
     public static final int CLOSE_POLICY = 1008;
     public static final int CLOSE_ROOM_EXPIRED = 4000;
+    public static final int CLOSE_REPLACED = 4001;
 
     public sealed interface JoinResult {
-        record Joined(Peer peer, List<String> others) implements JoinResult {}
+        /** {@code replaced}: el socket anterior del mismo dispositivo, que hay que cerrar; null si no hubo. */
+        record Joined(Peer peer, List<String> others, Peer replaced) implements JoinResult {
+            public Joined(Peer peer, List<String> others) {
+                this(peer, others, null);
+            }
+        }
 
         record Full() implements JoinResult {}
     }
@@ -61,8 +69,17 @@ public class RoomRegistry {
         return Base64.getUrlEncoder().withoutPadding().encodeToString(b);
     }
 
-    /** Agrega el dispositivo a la sala. No avisa a nadie: ver {@link #announceJoin}. */
     public JoinResult join(String roomId, PeerChannel channel) {
+        return join(roomId, channel, null);
+    }
+
+    /**
+     * Agrega el dispositivo a la sala. No avisa a nadie: ver {@link #announceJoin}.
+     * Si {@code resume} coincide con el de un dispositivo presente, este socket lo reemplaza con el mismo
+     * {@code peerId} (y el mismo rol de dueño): es el mismo dispositivo que volvió tras perder la red y cuyo
+     * socket anterior el servidor aún no vio caer.
+     */
+    public JoinResult join(String roomId, PeerChannel channel, String resume) {
         long now = clock.millis();
         synchronized (lock) {
             Room room = rooms.get(roomId);
@@ -71,10 +88,21 @@ public class RoomRegistry {
                 rooms.put(roomId, room);
                 metrics.roomCreated();
             }
+            Peer stale = resume == null ? null : room.peers.values().stream()
+                    .filter(p -> p.resume != null && sameToken(p.resume, resume))
+                    .findFirst().orElse(null);
+            if (stale != null) {
+                Peer peer = new Peer(stale.id, room, channel, resume);
+                room.peers.put(peer.id, peer);
+                room.lastActivity = now;
+                List<String> others = room.peerIds().stream().filter(id -> !id.equals(peer.id)).toList();
+                metrics.resumed();
+                return new JoinResult.Joined(peer, others, stale);
+            }
             if (room.peers.size() >= maxPeers) {
                 return new JoinResult.Full();
             }
-            Peer peer = new Peer(newPeerId(), room, channel);
+            Peer peer = new Peer(newPeerId(), room, channel, resume);
             List<String> others = room.peerIds();
             if (room.peers.isEmpty()) {
                 room.ownerId = peer.id;
@@ -179,6 +207,10 @@ public class RoomRegistry {
             }
         }
         return dead.size();
+    }
+
+    private static boolean sameToken(String a, String b) {
+        return MessageDigest.isEqual(a.getBytes(StandardCharsets.US_ASCII), b.getBytes(StandardCharsets.US_ASCII));
     }
 
     private void safeSend(Peer p, String json) {
