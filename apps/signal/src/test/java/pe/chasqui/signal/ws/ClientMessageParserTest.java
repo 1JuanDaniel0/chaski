@@ -17,6 +17,8 @@ class ClientMessageParserTest {
         assertEquals(new ClientMessage.Kick("x"), p.parse("{\"type\":\"kick\",\"peerId\":\"x\"}"));
         assertEquals(new ClientMessage.Report("relay", 1234), p.parse("{\"type\":\"report\",\"route\":\"relay\",\"ms\":1234}"));
         assertEquals(new ClientMessage.Ping(), p.parse("{\"type\":\"ping\"}"));
+        assertEquals(new ClientMessage.Join(ROOM, ROOM),
+                p.parse("{\"type\":\"join\",\"roomId\":\"" + ROOM + "\",\"v\":1,\"resume\":\"" + ROOM + "\"}"));
     }
 
     @ParameterizedTest
@@ -25,6 +27,8 @@ class ClientMessageParserTest {
             "{\"type\":\"join\",\"roomId\":\"short\",\"v\":1}",
             "{\"type\":\"join\",\"roomId\":\"AAAAAAAAAAAAAAAAAAAAAA\"}",
             "{\"type\":\"join\",\"roomId\":\"AAAAAAAAAAAAAAAAAAAAA!\",\"v\":1}",
+            "{\"type\":\"join\",\"roomId\":\"AAAAAAAAAAAAAAAAAAAAAA\",\"v\":1,\"resume\":\"short\"}",
+            "{\"type\":\"join\",\"roomId\":\"AAAAAAAAAAAAAAAAAAAAAA\",\"v\":1,\"resume\":7}",
             "{\"type\":\"signal\",\"to\":\"p\",\"seq\":0,\"data\":\"a\"}",
             "{\"type\":\"signal\",\"to\":\"p\",\"seq\":1.5,\"data\":\"a\"}",
             "{\"type\":\"signal\",\"to\":\"p\",\"seq\":1}",

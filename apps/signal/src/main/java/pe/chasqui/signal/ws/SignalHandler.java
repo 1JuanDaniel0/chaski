@@ -168,12 +168,18 @@ public class SignalHandler extends TextWebSocketHandler {
             fail(st, ErrorCode.RATE_LIMITED, "too many joins");
             return;
         }
-        switch (registry.join(j.roomId(), st)) {
+        switch (registry.join(j.roomId(), st, j.resume())) {
             case RoomRegistry.JoinResult.Full f -> fail(st, ErrorCode.ROOM_FULL, "room is full");
             case RoomRegistry.JoinResult.Joined ok -> {
                 st.peer = ok.peer();
                 st.send(Frames.joined(ok.peer().id(), ok.others(), turn.issue()));
-                registry.announceJoin(ok.peer(), ok.others());
+                if (ok.replaced() != null) {
+                    // Mismo dispositivo, mismo peerId: el otro no necesita enterarse. Su socket viejo se cierra
+                    // y su leave() no hace nada porque ya no está en la sala.
+                    ok.replaced().channel().close(RoomRegistry.CLOSE_REPLACED, "replaced");
+                } else {
+                    registry.announceJoin(ok.peer(), ok.others());
+                }
             }
         }
     }

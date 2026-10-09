@@ -9,6 +9,7 @@ El cifrado resuelve el tránsito. Los riesgos reales están en el código que si
 | Servidor de señalización comprometido intenta MITM | Señalización cifrada y autenticada con `k_sig` (AES-GCM con AAD) | Bajo |
 | Atacante en la misma red (Wi-Fi pública) | DTLS en el canal de datos, TLS en la web y la señalización | Bajo |
 | Alguien fotografía el QR | Sala de máximo 2 dispositivos; la PC muestra quién se conectó y puede expulsarlo; el QR expira a los 10 min sin uso | Medio-bajo |
+| Intruso con el QR aprovecha una reconexión | Cada lado fija la huella DTLS del otro y rechaza renegociaciones con otra; volver a la sala usa un token `resume` que solo conoce cada dispositivo | Bajo: puede estorbar la reconexión, no tomar la sesión |
 | Archivo malicioso | Nada se abre solo; aviso en extensiones ejecutables; nombres saneados (caracteres de control y truco RTLO) | Bajo |
 | XSS vía texto o nombre de archivo | Todo se muestra como texto (prohibido `dangerouslySetInnerHTML`) + CSP estricta | Bajo |
 | Código del frontend alterado (servidor o dependencia npm) | Sin scripts de terceros, dependencias mínimas y fijadas, Dependabot, código abierto | Medio: limitación conocida del cifrado en web |

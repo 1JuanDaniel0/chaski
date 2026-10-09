@@ -11,6 +11,7 @@ Chaski pasa archivos y texto entre tu celular y una PC escaneando un QR. Está p
 - **Sin instalar nada.** Funciona en el navegador. En Android se puede instalar como app (PWA) de forma opcional.
 - **Funciona entre redes distintas.** Por ejemplo, la PC en el wifi del trabajo y el celular con datos móviles. Si no hay ruta directa, usa un relevo (TURN), y los datos siguen cifrados.
 - **Si el servidor no responde**, lo dice y ofrece "Reintentar". Al volver la red, reintenta solo.
+- **Reconexión automática.** Si se corta la conexión ya emparejados (pasar de wifi a datos, bloquear el celular, un microcorte), muestra "Reconectando…" y vuelve sola, sin escanear de nuevo. Lo que se estaba enviando sigue desde donde quedó. Si en 2 minutos no lo logra, avisa que se perdió la conexión.
 
 ### Enviar
 - **Archivos en ambos sentidos**, varios a la vez y de cualquier tipo, hasta 500 MB por archivo.
@@ -65,5 +66,5 @@ Chaski pasa archivos y texto entre tu celular y una PC escaneando un QR. Está p
 - iPhone: no hay "Compartir con Chaski" (Safari no lo soporta) ni escáner dentro de la app. Se usa la cámara del iPhone.
 - Sin vista previa de Word, Excel ni PowerPoint: habría que subirlos a un servidor, y eso rompe la promesa de privacidad.
 - Máximo 500 MB por archivo: los archivos se arman en memoria antes de descargarse. La escritura directa a disco, que quitaría ese límite, está en la hoja de ruta.
-- Si se corta la conexión hay que volver a escanear. La reconexión automática está en la hoja de ruta.
+- Si se recarga o se cierra la pestaña, hay que volver a escanear: el secreto del QR solo vive en la memoria de la pestaña, a propósito.
 - Si un dispositivo pierde el servidor de señalización pero el canal directo sigue abierto (pasa en Android al abrir el selector de archivos, que manda Chrome a segundo plano), la sesión sigue. Solo se avisa "El otro dispositivo se desconectó" cuando se cierra el canal directo.
