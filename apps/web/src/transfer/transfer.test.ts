@@ -5,6 +5,8 @@ import { CHUNK_SIZE, chunkCount, decodeFrame, encodeFrame, splitIntoFrames } fro
 import { TransferManager, type ChannelLike, type TransferItem } from './manager';
 import { parseControl } from './protocol';
 import { routeFromStats } from './route';
+import { sdpFingerprints } from './peer';
+import { parseSignalPayload } from '../signaling/messages';
 
 describe('cabecera de trozo', () => {
   it('codifica big-endian y decodifica', () => {
@@ -143,5 +145,19 @@ describe('TransferManager', () => {
     if (inc.status === 'active') B.cancel('in', inc.id);
     await new Promise((r) => setTimeout(r, 200));
     expect(['cancelled', 'done']).toContain(ia[0]!.status);
+  });
+});
+
+describe('reconexión', () => {
+  const sdp = (fp: string) => `v=0\r\no=- 1 2 IN IP4 127.0.0.1\r\na=fingerprint:sha-256 ${fp}\r\nm=application 9 UDP/DTLS/SCTP webrtc-datachannel\r\na=fingerprint:sha-256 ${fp}\r\n`;
+
+  it('la huella DTLS no cambia en un reinicio de ICE y distingue a otro dispositivo', () => {
+    expect(sdpFingerprints(sdp('AB:CD'))).toBe('sha-256 ab:cd');
+    expect(sdpFingerprints(sdp('AB:CD'))).toBe(sdpFingerprints(sdp('ab:cd')));
+    expect(sdpFingerprints(sdp('AB:CD'))).not.toBe(sdpFingerprints(sdp('AB:CE')));
+  });
+
+  it('acepta el pedido de reinicio en la señalización', () => {
+    expect(parseSignalPayload('{"kind":"restart"}')).toEqual({ kind: 'restart' });
   });
 });

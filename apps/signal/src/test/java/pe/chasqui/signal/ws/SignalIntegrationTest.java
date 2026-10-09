@@ -181,4 +181,32 @@ class SignalIntegrationTest {
             a.awaitClose();
         }
     }
+
+    @Test
+    void resumeTakesOverStaleSocketSilently() throws Exception {
+        String room = newRoom();
+        String token = newRoom();
+        String resume = "{\"type\":\"join\",\"roomId\":\"" + room + "\",\"v\":1,\"resume\":\"" + token + "\"}";
+        try (var a = client(); var b = client(); var a2 = client()) {
+            a.send(resume);
+            String idA = a.next().get("peerId").asText();
+            b.send(join(room));
+            String idB = b.next().get("peerId").asText();
+            b.send(join(room).replace("join", "ping"));
+            a.next(); // peer-joined
+
+            a2.send(resume);
+            JsonNode j = a2.next();
+            assertEquals("joined", j.get("type").asText());
+            assertEquals(idA, j.get("peerId").asText());
+            assertEquals(idB, j.get("peers").get(0).asText());
+            assertEquals(RoomRegistry.CLOSE_REPLACED, a.awaitClose().getCode());
+
+            // b solo recibe su pong: ni peer-left ni peer-joined.
+            assertEquals("pong", b.next().get("type").asText());
+            b.send("{\"type\":\"signal\",\"to\":\"" + idA + "\",\"seq\":1,\"data\":\"eA\"}");
+            assertEquals("signal", a2.next().get("type").asText());
+            assertTrue(b.inbox.isEmpty(), b.inbox.toString());
+        }
+    }
 }
