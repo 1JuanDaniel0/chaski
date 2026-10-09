@@ -20,7 +20,9 @@ export type SignalPayload =
   | { kind: 'hello'; device: string }
   | { kind: 'offer'; sdp: string }
   | { kind: 'answer'; sdp: string }
-  | { kind: 'ice'; candidate: RTCIceCandidateInit | null };
+  | { kind: 'ice'; candidate: RTCIceCandidateInit | null }
+  /** Lo envía quien responde para pedirle al que ofrece que reinicie ICE (reconexión). */
+  | { kind: 'restart' };
 
 const isStr = (v: unknown): v is string => typeof v === 'string';
 
@@ -76,6 +78,8 @@ export function parseSignalPayload(raw: string): SignalPayload | null {
     case 'offer':
     case 'answer':
       return isStr(o.sdp) ? { kind: o.kind, sdp: o.sdp } : null;
+    case 'restart':
+      return { kind: 'restart' };
     case 'ice':
       if (o.candidate === null) return { kind: 'ice', candidate: null };
       return typeof o.candidate === 'object' ? { kind: 'ice', candidate: o.candidate as RTCIceCandidateInit } : null;

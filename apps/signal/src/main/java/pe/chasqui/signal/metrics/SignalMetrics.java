@@ -11,12 +11,14 @@ public class SignalMetrics {
     private final Counter roomsCreated;
     private final Counter roomsPaired;
     private final Counter connections;
+    private final Counter resumed;
 
     public SignalMetrics(MeterRegistry registry) {
         this.registry = registry;
         this.roomsCreated = Counter.builder("chasqui.rooms.created").register(registry);
         this.roomsPaired = Counter.builder("chasqui.rooms.paired").register(registry);
         this.connections = Counter.builder("chasqui.connections").register(registry);
+        this.resumed = Counter.builder("chasqui.peers.resumed").register(registry);
     }
 
     public void roomCreated() { roomsCreated.increment(); }
@@ -24,6 +26,9 @@ public class SignalMetrics {
     public void roomPaired() { roomsPaired.increment(); }
 
     public void connection() { connections.increment(); }
+
+    /** Un dispositivo volvió a la sala y reemplazó su socket anterior. */
+    public void resumed() { resumed.increment(); }
 
     /** route: host | srflx | relay | failed (conjunto cerrado, validado antes). */
     public void report(String route) {

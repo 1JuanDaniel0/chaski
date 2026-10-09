@@ -173,4 +173,49 @@ class RoomRegistryTest {
         clock.advance(Duration.ofMinutes(1));
         assertEquals(1, registry.sweep());
     }
+
+    static final String TOKEN_A = "TTTTTTTTTTTTTTTTTTTTTA";
+
+    @Test
+    void resumeReplacesStaleSocketKeepingIdAndOwnership() {
+        var old = new FakeChannel();
+        var other = new FakeChannel();
+        Peer a = assertInstanceOf(JoinResult.Joined.class, registry.join(ROOM, old, TOKEN_A)).peer();
+        Peer b = join(other);
+        int seen = other.sent.size();
+
+        var fresh = new FakeChannel();
+        var j = assertInstanceOf(JoinResult.Joined.class, registry.join(ROOM, fresh, TOKEN_A));
+        assertEquals(a.id(), j.peer().id());
+        assertEquals(List.of(b.id()), j.others());
+        assertSame(a, j.replaced());
+        assertEquals(seen, other.sent.size(), "el otro no recibe peer-joined ni peer-left");
+
+        // El leave() del socket viejo ya no saca a nadie.
+        registry.leave(a);
+        assertEquals(seen, other.sent.size());
+        assertEquals(RoomRegistry.RouteResult.OK, registry.signal(b, a.id(), 1, "x"));
+        assertTrue(fresh.sent.get(fresh.sent.size() - 1).contains("\"signal\""));
+        // Sigue siendo el dueño.
+        assertEquals(RoomRegistry.KickResult.OK, registry.kick(j.peer(), b.id()));
+    }
+
+    @Test
+    void wrongOrMissingResumeTokenDoesNotReplace() {
+        registry.join(ROOM, new FakeChannel(), TOKEN_A);
+        join(new FakeChannel());
+        assertInstanceOf(JoinResult.Full.class, registry.join(ROOM, new FakeChannel(), "TTTTTTTTTTTTTTTTTTTTTB"));
+        assertInstanceOf(JoinResult.Full.class, registry.join(ROOM, new FakeChannel()));
+    }
+
+    @Test
+    void resumeAfterServerSawTheDropIsANormalJoin() {
+        var c1 = new FakeChannel();
+        Peer a = assertInstanceOf(JoinResult.Joined.class, registry.join(ROOM, new FakeChannel(), TOKEN_A)).peer();
+        join(c1);
+        registry.leave(a);
+        var j = assertInstanceOf(JoinResult.Joined.class, registry.join(ROOM, new FakeChannel(), TOKEN_A));
+        assertNull(j.replaced());
+        assertNotEquals(a.id(), j.peer().id());
+    }
 }

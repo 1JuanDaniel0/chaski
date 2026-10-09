@@ -19,6 +19,7 @@ const STAGE: Record<Phase, Stage> = {
   waiting: 'pair',
   connecting: 'pair',
   connected: 'chat',
+  reconnecting: 'chat',
   'peer-left': 'chat',
   kicked: 'chat',
   error: 'chat',
@@ -43,6 +44,8 @@ export function App() {
   // Un error antes de emparejar se muestra en la pantalla de inicio, no en un chat vacío.
   const stage: Stage = v.phase === 'error' && connectedAt.current === null ? 'pair' : STAGE[v.phase];
   const live = v.phase === 'connected';
+  // Reconectando, el canal sigue abierto: se puede seguir enviando y lo que esté en curso continúa al volver.
+  const usable = live || v.phase === 'reconnecting';
   const busy = v.items.some((i) => i.status === 'pending' || i.status === 'active');
   const received = v.items.filter((i) => i.dir === 'in' && i.kind === 'file' && i.status === 'done' && i.blob);
   useWakeLock(busy);
@@ -60,10 +63,11 @@ export function App() {
   const peer = v.peerDevice ?? 'otro dispositivo';
   const system = [
     ...(connectedAt.current ? [{ key: 'on', text: `Conectado con ${peer} · ${clock(connectedAt.current)}` }] : []),
-    ...(stage === 'chat' && !live ? [{ key: 'off', text: ENDED[v.phase] ?? v.error ?? 'Se perdió la conexión' }] : []),
+    ...(v.phase === 'reconnecting' ? [{ key: 're', text: 'Reconectando…' }] : []),
+    ...(stage === 'chat' && !usable ? [{ key: 'off', text: ENDED[v.phase] ?? v.error ?? 'Se perdió la conexión' }] : []),
   ];
 
-  const dragProps = live
+  const dragProps = usable
     ? {
         onDragOver: (e: DragEvent) => {
           e.preventDefault();
@@ -119,7 +123,7 @@ export function App() {
           >
             <ThemeIcon size={18} aria-hidden="true" />
           </button>
-          {stage === 'chat' && live && (
+          {stage === 'chat' && usable && (
             <button
               type="button"
               onClick={() => ctl.end()}
@@ -174,7 +178,7 @@ export function App() {
                     </button>
                   </div>
                 )}
-                {live ? (
+                {usable ? (
                   <Composer onFiles={(f) => ctl.sendFiles(f)} onText={(t) => ctl.sendText(t)} />
                 ) : (
                   <button

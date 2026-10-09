@@ -35,7 +35,7 @@ HKDF-SHA256 (WebCrypto), `salt` = 0 bytes, `ikm` = `s`:
 ### 3.1 Mensajes cliente → servidor
 
 ```jsonc
-{ "type": "join",   "roomId": "<22 chars base64url>", "v": 1 }
+{ "type": "join",   "roomId": "<22 chars base64url>", "v": 1, "resume": "<22 chars base64url, opcional>" }
 { "type": "signal", "to": "<peerId>", "seq": 1, "data": "<base64url(iv || ciphertext)>" }
 { "type": "kick",   "peerId": "<peerId>" }      // solo lo acepta el primer dispositivo de la sala
 { "type": "report", "route": "host" | "srflx" | "relay" | "failed", "ms": 1234 }
@@ -59,6 +59,8 @@ HKDF-SHA256 (WebCrypto), `salt` = 0 bytes, `ikm` = `s`:
 - `peers`: los demás dispositivos ya presentes (0 o 1 en v1).
 - `turn`: PUEDE omitirse si el servidor no tiene `TURN_SECRET` configurado (desarrollo).
 - `report` no tiene respuesta; el servidor solo suma contadores.
+- `resume`: token aleatorio de 16 bytes que el cliente genera al abrir la sesión y repite en cada `join` de esa
+  sesión (ver §3.5). Nunca sale del servidor ni se registra.
 
 ### 3.3 Códigos de error
 
@@ -78,7 +80,31 @@ HKDF-SHA256 (WebCrypto), `salt` = 0 bytes, `ikm` = `s`:
 - Solo enruta. NUNCA interpreta ni registra `data`.
 - Al reenviar `signal`, reemplaza `to` por `from` (el `peerId` real del remitente) y conserva `seq` y `data`.
 - Cuando un socket se cierra, avisa `peer-left` al resto y lo saca de la sala. Sala vacía = sala borrada.
-  - El cliente ignora `peer-left` si ya tiene el DataChannel abierto con ese dispositivo: solo cerró el WebSocket, no la conexión directa. La salida real se detecta cuando el canal se cierra o ICE pasa a `failed`.
+  - El cliente ignora `peer-left` si ya tiene el DataChannel abierto con ese dispositivo: solo cerró el WebSocket, no la conexión directa. La salida real se detecta cuando el canal se cierra o la reconexión (§3.5) se rinde.
+- Si un `join` trae un `resume` igual al de un dispositivo que sigue en la sala, el nuevo socket lo **reemplaza**:
+  conserva su `peerId` y su rol de primer dispositivo, el socket viejo se cierra con el código `4001` (`replaced`)
+  y el otro dispositivo no recibe `peer-left` ni `peer-joined`. Así vuelve a la sala un celular cuyo socket anterior
+  quedó colgado (cambio de red) sin chocar con `room-full`. La comparación del token es de tiempo constante.
+- Códigos de cierre propios: `4000` sala expirada, `4001` socket reemplazado por el mismo dispositivo.
+
+### 3.5 Reconexión (RF4)
+
+Solo aplica cuando el DataChannel ya se abrió. Antes de eso, un corte se muestra como error y se reintenta a mano.
+
+- **Señalización.** Si el WebSocket se cierra, el cliente vuelve a abrirlo y repite `join` con el mismo `roomId` y
+  el mismo `resume`, con espera exponencial (1 s, 2 s, 4 s… hasta 15 s). Si no recibe respuesta a un `ping` en
+  10 s, da el socket por muerto. Al volver la red (`online`) o la pestaña (`visibilitychange`), reintenta en el acto.
+  Si al volver tiene otro `peerId` (el servidor ya había visto caer el socket), el otro lo recibe como `peer-joined`
+  y actualiza a quién envía. `seq` sigue subiendo: nunca se reinicia dentro de la sesión.
+- **Ruta directa.** Cuando `connectionState` pasa a `disconnected` por más de 2 s, o a `failed`, se reinicia ICE
+  sobre la misma `RTCPeerConnection`: el DTLS y el DataChannel no se cierran, y lo que estaba en curso continúa.
+  Solo reinicia quien ofreció al principio (`createOffer({ iceRestart: true })`); el otro le envía `restart` (§4).
+  Se reintenta cada 8 s y, si a los 2 minutos no hay ruta, la sesión se da por perdida.
+- Al volver a la sala, el cliente aplica las credenciales TURN nuevas de `joined` (`setConfiguration`), porque las
+  anteriores pueden haber vencido.
+- **Mismo dispositivo.** Quien tenga el QR podría unirse a la sala mientras el otro está fuera. Por eso cada lado fija
+  la huella DTLS (`a=fingerprint`) del otro en la primera negociación y rechaza cualquier oferta o respuesta
+  posterior con otra huella: un intruso puede estorbar la reconexión, pero no meterse en la sesión.
 
 ## 4. Señalización cifrada
 
@@ -98,6 +124,7 @@ HKDF-SHA256 (WebCrypto), `salt` = 0 bytes, `ikm` = `s`:
 { "kind": "offer",  "sdp": "<SDP>" }
 { "kind": "answer", "sdp": "<SDP>" }
 { "kind": "ice",    "candidate": { /* RTCIceCandidateInit */ } | null }  // null = fin de candidatos
+{ "kind": "restart" }                                        // pide a quien ofreció que reinicie ICE (§3.5)
 ```
 
 **Quién ofrece:** el dispositivo que ya estaba en la sala (normalmente la PC) crea la oferta

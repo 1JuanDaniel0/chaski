@@ -11,6 +11,10 @@ export interface SignalingHandlers {
 }
 
 const PING_MS = 25_000;
+/** Sin respuesta a un ping en este tiempo, el socket se da por muerto (p. ej. TCP colgado al cambiar de red). */
+const PONG_TIMEOUT_MS = 10_000;
+/** Plazo de {@link SignalingClient.probe}. */
+const PROBE_MS = 5_000;
 
 export class SignalingClient {
   private ws: WebSocket | null = null;
@@ -21,35 +25,80 @@ export class SignalingClient {
   private queue: Promise<void> = Promise.resolve();
   private sendQueue: Promise<void> = Promise.resolve();
   private closed = false;
+  /** Desde cuándo esperamos respuesta a un ping (null si nada pendiente). */
+  private pingSince: number | null = null;
 
+  /**
+   * @param resume token aleatorio de esta sesión. Si el socket se cae, {@link connect} vuelve a unirse con él y el
+   * servidor reemplaza el socket viejo (si aún no lo vio caer) conservando el mismo peerId.
+   */
   constructor(
     private url: string,
     private keys: RoomKeys,
     private h: SignalingHandlers,
+    private resume?: string,
   ) {}
 
+  /** Abre el WebSocket y se une a la sala. Se puede volver a llamar tras {@link SignalingHandlers.onClose}. */
   connect(): void {
+    if (this.closed) return;
+    this.stopPing();
+    this.ws?.close();
     const ws = new WebSocket(this.url);
     this.ws = ws;
     ws.onopen = () => {
-      ws.send(JSON.stringify({ type: 'join', roomId: this.keys.roomId, v: 1 }));
-      this.pingTimer = setInterval(() => this.raw({ type: 'ping' }), PING_MS);
+      ws.send(JSON.stringify({ type: 'join', roomId: this.keys.roomId, v: 1, ...(this.resume ? { resume: this.resume } : {}) }));
+      this.pingSince = null;
+      this.pingTimer = setInterval(() => {
+        if (this.pingSince !== null && Date.now() - this.pingSince > PONG_TIMEOUT_MS) this.drop(ws);
+        else this.ping();
+      }, PING_MS);
     };
     ws.onmessage = (ev) => {
-      if (typeof ev.data !== 'string') return;
+      if (this.ws !== ws || typeof ev.data !== 'string') return;
+      this.pingSince = null;
       const msg = parseServerMessage(ev.data);
       if (!msg) return;
       // Serializa para respetar el orden pese al descifrado asíncrono.
       this.queue = this.queue.then(() => this.handle(msg)).catch(() => undefined);
     };
     ws.onclose = () => {
+      if (this.ws !== ws) return;
+      this.ws = null;
       this.stopPing();
-      if (!this.closed) {
-        this.closed = true;
-        this.h.onClose();
-      }
+      if (!this.closed) this.h.onClose();
     };
     ws.onerror = () => undefined;
+  }
+
+  /** Comprueba ya que el socket siga vivo (al volver la red o la pestaña); si no responde, lo cierra. */
+  probe(): void {
+    const ws = this.ws;
+    if (!ws || ws.readyState !== WebSocket.OPEN) return;
+    this.ping();
+    const since = this.pingSince;
+    setTimeout(() => {
+      if (this.ws === ws && this.pingSince === since) this.drop(ws);
+    }, PROBE_MS);
+  }
+
+  private ping(): void {
+    this.pingSince ??= Date.now();
+    this.raw({ type: 'ping' });
+  }
+
+  /** Cierra un socket que no responde y avisa como si se hubiera caído. */
+  private drop(ws: WebSocket): void {
+    if (this.ws !== ws) return;
+    this.ws = null;
+    this.stopPing();
+    ws.close();
+    if (!this.closed) this.h.onClose();
+  }
+
+  /** WebSocket abierto (no garantiza que ya se haya unido a la sala). */
+  get active(): boolean {
+    return this.ws !== null;
   }
 
   private async handle(msg: ServerMessage): Promise<void> {
@@ -101,6 +150,7 @@ export class SignalingClient {
     this.closed = true;
     this.stopPing();
     this.ws?.close();
+    this.ws = null;
   }
 
   private raw(obj: object): void {
