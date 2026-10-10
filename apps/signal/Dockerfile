@@ -6,7 +6,7 @@ RUN mvn -B -q dependency:go-offline
 COPY src ./src
 RUN mvn -B -q -DskipTests package
 
-FROM eclipse-temurin:21-jre
+FROM eclipse-temurin:25-jre
 RUN groupadd --gid 10001 chasqui && useradd --uid 10001 --gid 10001 --no-create-home --shell /usr/sbin/nologin chasqui
 WORKDIR /app
 COPY --from=build /build/target/chasqui-signal.jar /app/app.jar
