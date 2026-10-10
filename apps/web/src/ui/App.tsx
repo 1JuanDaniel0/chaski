@@ -9,6 +9,7 @@ import { Thread, download } from './chat/Thread';
 import { useLeaveGuard, useWakeLock } from './hooks';
 import { Composer, coarse } from './chat/Composer';
 import { TutorialDialog } from './tutorial/TutorialDialog';
+import { InfoDemo } from './tutorial/InfoDemo';
 import { EASE, screen } from './motion';
 import { NEXT_THEME, THEME_LABEL, getThemePref, setThemePref } from './theme';
 
@@ -57,6 +58,13 @@ export function App() {
   useEffect(() => {
     ctl.init();
   }, [ctl]);
+
+  // La sección estática de index.html (qué es Chaski y preguntas frecuentes) solo va debajo del QR.
+  const showInfo = stage === 'pair' && v.phase !== 'scan';
+  useEffect(() => {
+    const info = document.getElementById('info');
+    if (info) info.hidden = !showInfo;
+  }, [showInfo]);
   if (live && connectedAt.current === null) connectedAt.current = Date.now();
   if (stage === 'pair') connectedAt.current = null;
 
@@ -228,6 +236,7 @@ export function App() {
       </AnimatePresence>
 
       <TutorialDialog open={tutorial} onClose={() => setTutorial(false)} />
+      <InfoDemo />
     </div>
   );
 }
