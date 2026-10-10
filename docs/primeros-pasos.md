@@ -45,6 +45,11 @@ Checklist en orden. Reemplaza `chaski.me` por tu dominio real en: `infra/docker-
 - [ ] En Pages: conecta el repo, directorio raíz `apps/web`, comando `pnpm build`, salida `dist`, y añade el dominio personalizado `app.<dominio>`.
 - [ ] En SSL/TLS de Cloudflare pon el modo **Full (strict)**.
 - [ ] **Origin Rule** para la señalización: el navegador entra por el 443, pero en la VM el 443 es de coturn y la señalización escucha en el 8443. En Cloudflare, Rules, Origin Rules, Create rule: `Hostname` igual a `signal.<dominio>`, y en **Destination Port** elige *Rewrite to* `8443`. Sin esta regla la app muestra "Sin conexión con el servidor".
+- [ ] **Buscadores.** La web ya trae `robots.txt`, `sitemap.xml`, `canonical` a `https://chaski.me/` y JSON-LD. Falta, desde las cuentas del dueño del dominio:
+  - [ ] [Google Search Console](https://search.google.com/search-console): propiedad de tipo **Dominio**, verificada con el registro TXT que pide, añadido en el DNS de Cloudflare. Luego, en Sitemaps, envía `https://chaski.me/sitemap.xml`.
+  - [ ] [Bing Webmaster Tools](https://www.bing.com/webmasters): "Importar desde Google Search Console" trae el sitio y el sitemap. Bing también alimenta DuckDuckGo y Yahoo.
+  - [ ] En Cloudflare, Caching, Configuration: activa **Crawler Hints**, que avisa a Bing por IndexNow cuando cambia algo.
+  - [ ] Redirige `app.<dominio>` a `https://<dominio>/` con una Redirect Rule (301, conservando ruta y query) para que los buscadores vean una sola dirección.
 
 ## 5. Certificado de origen para la señalización (8443)
 

@@ -5,7 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="theme-color" content="#ffffff" />
     <script src="/theme.js"></script>
-    <meta name="description" content="Pasa archivos y texto entre tus dispositivos escaneando un QR. Sin cuentas, directo y cifrado." />
+    <meta name="description" content="Pasa archivos y texto del celular a cualquier PC escaneando un QR. Sin cable, sin cuenta y sin abrir WhatsApp Web. Gratis, directo y cifrado." />
+    <link rel="canonical" href="https://chaski.me/" />
     <meta name="referrer" content="no-referrer" />
     <!-- Vista previa al compartir el enlace (WhatsApp, X, LinkedIn...) -->
     <meta property="og:type" content="website" />
@@ -22,10 +23,108 @@
     <link rel="icon" href="/icon.svg" type="image/svg+xml" />
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
     <link rel="manifest" href="/manifest.webmanifest" />
-    <title>Chaski</title>
+    <title>Chaski: pasa archivos del celular a la PC sin cable ni cuenta</title>
+    <!-- Ficha para buscadores. Es un bloque de datos: el navegador no lo ejecuta y la CSP no lo bloquea. -->
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "WebApplication",
+        "name": "Chaski",
+        "url": "https://chaski.me/",
+        "description": "Pasa archivos y texto del celular a cualquier PC escaneando un QR. Sin cable, sin cuenta y sin instalar nada.",
+        "applicationCategory": "UtilitiesApplication",
+        "operatingSystem": "Web",
+        "inLanguage": "es",
+        "isAccessibleForFree": true,
+        "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" }
+      }
+    </script>
   </head>
   <body>
     <div id="root"></div>
+    <!--
+      Qué es Chaski y preguntas frecuentes, en HTML estático: los buscadores lo leen sin ejecutar
+      JavaScript ni conectar con la señalización. La app lo oculta fuera de la pantalla del QR y
+      pone la animación del tutorial en #info-demo.
+    -->
+    <section id="info" aria-labelledby="info-title" class="mx-auto w-full max-w-[1296px] px-4 pb-20 sm:px-8">
+      <div class="flex flex-col gap-10 border-t border-line pt-14 md:flex-row md:items-center md:gap-16">
+        <div class="flex flex-col gap-5 md:flex-1">
+          <h2 id="info-title" class="text-[32px] font-semibold leading-[1.05] tracking-[-0.035em] sm:text-[44px]">
+            Del celular a la PC, sin cable ni cuenta
+          </h2>
+          <p class="text-[18px] leading-relaxed text-muted">
+            Chaski pasa fotos, documentos, videos y texto entre tu celular y cualquier computadora: la del trabajo,
+            la de la universidad, la de una cabina o la de la imprenta. Abres chaski.me en la PC, escaneas el QR con
+            el celular y eliges qué enviar. Sin iniciar sesión, sin instalar nada y sin abrir WhatsApp Web en una PC ajena.
+          </p>
+          <ol class="flex flex-col gap-3 text-[17px]">
+            <li><strong class="font-semibold">1. Abre chaski.me en la PC.</strong> Aparece un QR al instante.</li>
+            <li><strong class="font-semibold">2. Escanéalo con la cámara del celular.</strong> Se conectan solos.</li>
+            <li><strong class="font-semibold">3. Elige qué enviar.</strong> Archivos o texto, en los dos sentidos.</li>
+          </ol>
+        </div>
+        <div id="info-demo" class="rounded-lg bg-soft p-6 empty:hidden md:flex-1 sm:p-8"></div>
+      </div>
+
+      <h2 class="mt-16 text-[26px] font-semibold tracking-[-0.03em]">Para qué sirve</h2>
+      <ul class="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <li class="rounded-lg bg-soft p-6">
+          <h3 class="text-[18px] font-semibold">PC del trabajo</h3>
+          <p class="mt-2 text-muted">Pasa un archivo sin abrir tu WhatsApp ni tu correo en una computadora que no es tuya.</p>
+        </li>
+        <li class="rounded-lg bg-soft p-6">
+          <h3 class="text-[18px] font-semibold">Imprenta o cabina</h3>
+          <p class="mt-2 text-muted">Manda lo que vas a imprimir desde el celular, sin USB y sin dejar tu sesión abierta.</p>
+        </li>
+        <li class="rounded-lg bg-soft p-6">
+          <h3 class="text-[18px] font-semibold">Universidad y laboratorio</h3>
+          <p class="mt-2 text-muted">Lleva tu trabajo o tus fotos de la pizarra a la PC del aula en segundos.</p>
+        </li>
+        <li class="rounded-lg bg-soft p-6">
+          <h3 class="text-[18px] font-semibold">Texto y contraseñas</h3>
+          <p class="mt-2 text-muted">Pasa un enlace, un código o la clave del wifi y cópialo con un toque.</p>
+        </li>
+      </ul>
+
+      <h2 class="mt-16 text-[26px] font-semibold tracking-[-0.03em]">Preguntas frecuentes</h2>
+      <div class="mt-4 flex flex-col divide-y divide-line">
+        <details class="py-4">
+          <summary class="cursor-pointer text-[18px] font-medium">¿Necesito crear una cuenta o instalar algo?</summary>
+          <p class="mt-3 text-muted">No. Chaski funciona en el navegador de la PC y del celular, sin usuario, correo ni contraseña.</p>
+        </details>
+        <details class="py-4">
+          <summary class="cursor-pointer text-[18px] font-medium">¿Mis archivos pasan por un servidor?</summary>
+          <p class="mt-3 text-muted">
+            No se suben a ningún servidor: van directo de un dispositivo al otro (WebRTC), cifrados de extremo a extremo.
+            Si la red no permite una conexión directa, pasan por un relevo que solo ve datos cifrados.
+          </p>
+        </details>
+        <details class="py-4">
+          <summary class="cursor-pointer text-[18px] font-medium">¿Funciona si la PC y el celular están en redes distintas?</summary>
+          <p class="mt-3 text-muted">Sí. Por ejemplo, la PC en el wifi del trabajo y el celular con datos móviles.</p>
+        </details>
+        <details class="py-4">
+          <summary class="cursor-pointer text-[18px] font-medium">¿Funciona con iPhone y Android?</summary>
+          <p class="mt-3 text-muted">Sí. En iPhone escaneas el QR con la cámara; en Android también puedes escanear desde la app o usar "Compartir con Chaski".</p>
+        </details>
+        <details class="py-4">
+          <summary class="cursor-pointer text-[18px] font-medium">¿Hay límite de tamaño?</summary>
+          <p class="mt-3 text-muted">Hasta 500 MB por archivo, y puedes enviar varios a la vez.</p>
+        </details>
+        <details class="py-4">
+          <summary class="cursor-pointer text-[18px] font-medium">¿Qué queda en la PC cuando termino?</summary>
+          <p class="mt-3 text-muted">
+            Nada: no hay historial ni cookies. Al pulsar "Terminar" se borra el chat en los dos dispositivos.
+            Los PDF puedes abrirlos sin descargarlos, así no queda una copia en Descargas.
+          </p>
+        </details>
+        <details class="py-4">
+          <summary class="cursor-pointer text-[18px] font-medium">¿Cuánto cuesta?</summary>
+          <p class="mt-3 text-muted">Es gratis y sin anuncios.</p>
+        </details>
+      </div>
+    </section>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
