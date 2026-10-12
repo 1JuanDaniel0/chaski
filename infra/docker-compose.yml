@@ -50,4 +50,7 @@ services:
     volumes:
       - ./coturn/turnserver.conf:/etc/coturn/turnserver.conf:ro
       - ./certs/turn:/etc/coturn/certs:ro
+    logging:
+      driver: json-file
+      options: { max-size: 10m, max-file: '3' }
     restart: unless-stopped
