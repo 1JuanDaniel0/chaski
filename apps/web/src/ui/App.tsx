@@ -8,6 +8,7 @@ import { ScanScreen } from './screens/ScanScreen';
 import { Thread, download } from './chat/Thread';
 import { useLeaveGuard, useWakeLock } from './hooks';
 import { Composer, coarse } from './chat/Composer';
+import { ShareChaski } from './chat/ShareChaski';
 import { TutorialDialog } from './tutorial/TutorialDialog';
 import { InfoDemo } from './tutorial/InfoDemo';
 import { EASE, screen } from './motion';
@@ -49,6 +50,7 @@ export function App() {
   const usable = live || v.phase === 'reconnecting';
   const busy = v.items.some((i) => i.status === 'pending' || i.status === 'active');
   const received = v.items.filter((i) => i.dir === 'in' && i.kind === 'file' && i.status === 'done' && i.blob);
+  const done = v.items.filter((i) => i.status === 'done');
   useWakeLock(busy);
   useLeaveGuard(busy);
 
@@ -170,7 +172,12 @@ export function App() {
             <m.div key="chat" variants={screen} initial="hidden" animate="show" exit="exit" className="flex min-h-0 flex-1 flex-col">
               <div className="min-h-0 flex-1 overflow-y-auto px-4">
                 <div className="mx-auto flex min-h-full max-w-[760px] flex-col justify-end">
-                  <Thread items={v.items} system={system} onCancel={(i) => ctl.cancel(i)} />
+                  <Thread
+                    items={v.items}
+                    system={system}
+                    footer={done.length > 0 && !busy && <ShareChaski received={done.some((i) => i.dir === 'in')} />}
+                    onCancel={(i) => ctl.cancel(i)}
+                  />
                 </div>
               </div>
               <div className="mx-auto w-full max-w-[760px] shrink-0 px-3 pb-[max(12px,env(safe-area-inset-bottom))] pt-1 sm:px-4 sm:pb-6">

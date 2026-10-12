@@ -47,6 +47,7 @@ Chaski pasa archivos y texto entre tu celular y una PC escaneando un QR. Está p
 - Interfaz mínima en español, sin textos de ayuda innecesarios, con un tutorial animado de 7 segundos.
 - Modo claro y oscuro automáticos. Funciona en celular y en PC.
 - Vista previa con imagen al compartir el enlace en WhatsApp, X o LinkedIn.
+- Cuando un envío termina bien, una línea discreta al final del chat invita a recomendar Chaski: "Recibido con Chaski" en quien recibe y "¿Te sirvió?" en quien envía. En el celular abre el menú Compartir; en la PC copia el enlace. El enlace es solo `https://chaski.me/`: nunca lleva nada de la sesión.
 - Debajo del QR, una sección de qué es Chaski, para qué sirve y preguntas frecuentes, con un video corto en 3D del escaneo y el envío, en claro y oscuro (`public/demo/`; se genera con `tools/escena-3d/`). El video se descarga solo al llegar a la sección y, con "reducir movimiento", se queda en una imagen fija. Está en HTML estático (`index.html`) para que Google y Bing la lean sin ejecutar JavaScript, y se oculta durante el chat y el escaneo.
 
 ## En qué se diferencia
