@@ -132,3 +132,4 @@ Settings, Branches (o Rulesets), regla para `main`:
 - [ ] Prototipo mínimo: dos pestañas en `localhost` que se pasan texto por WebRTC.
 - [ ] Monitor de uptime externo gratuito para `app.` y `signal.`.
 - [ ] Validar con unas 5 personas si prefieren escanear un QR antes que abrir WhatsApp Web.
+- [ ] **Métricas de un lanzamiento.** La web no lleva analítica ni scripts de terceros, así que cada canal (Reddit, Show HN…) se mide publicando en días distintos y comparando el día. A medianoche (hora de Lima) la señalización escribe una línea con lo de ese día: salas creadas y emparejadas, reconexiones y cuántas conexiones fueron directas (`host`, `srflx`) o por el relevo (`relay`). En la VM: `docker compose logs signal | grep "resumen diario"`. Los logs se pierden al redesplegar, así que anota los números antes de un `deploy.sh`. Para las visitas de buscadores, Search Console.
