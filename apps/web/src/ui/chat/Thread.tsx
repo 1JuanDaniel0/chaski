@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
 import { AnimatePresence, m } from 'motion/react';
 import { ArrowSquareOut, Check, Checks, Copy, DownloadSimple, File, FileAudio, FileDoc, FileImage, FilePdf, FilePpt, FileText, FileVideo, FileXls, FileZip, Warning, X } from '@phosphor-icons/react';
 import { fileKind, type FileKind } from '../../lib/filetype';
@@ -260,12 +260,22 @@ function Bubble({ item, at, onCancel }: { item: TransferItem; at: number; onCanc
 }
 
 /** Conversación entre tus dos dispositivos. Lo que llega a la izquierda; lo tuyo, a la derecha. */
-export function Thread({ items, system, onCancel }: { items: TransferItem[]; system: { key: string; text: string }[]; onCancel: (i: TransferItem) => void }) {
+export function Thread({
+  items,
+  system,
+  footer,
+  onCancel,
+}: {
+  items: TransferItem[];
+  system: { key: string; text: string }[];
+  footer?: ReactNode;
+  onCancel: (i: TransferItem) => void;
+}) {
   const seen = useRef(new Map<string, number>());
   const end = useRef<HTMLDivElement>(null);
   for (const i of items) if (!seen.current.has(i.key)) seen.current.set(i.key, Date.now());
 
-  const count = items.length + system.length;
+  const count = items.length + system.length + (footer ? 1 : 0);
   useLayoutEffect(() => {
     end.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
   }, [count]);
@@ -287,6 +297,7 @@ export function Thread({ items, system, onCancel }: { items: TransferItem[]; sys
           <span className="rounded-full bg-soft px-3 py-1 text-[13px] font-medium text-muted">{s.text}</span>
         </m.li>
       ))}
+      {footer}
       <div ref={end} />
     </ul>
   );
