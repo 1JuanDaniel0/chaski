@@ -17,7 +17,7 @@ services:
       MANAGEMENT_SERVER_PORT: "9090"
 
   coturn:
-    image: coturn/coturn:4.6.3
+    image: coturn/coturn:4.18.0
     # Puertos mapeados (en vez de network_mode host) para que funcione también en Docker Desktop.
     ports:
       - "3478:3478/udp"
