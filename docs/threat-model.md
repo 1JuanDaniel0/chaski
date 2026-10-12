@@ -14,6 +14,7 @@ El cifrado resuelve el tránsito. Los riesgos reales están en el código que si
 | XSS vía texto o nombre de archivo | Todo se muestra como texto (prohibido `dangerouslySetInnerHTML`) + CSP estricta | Bajo |
 | Código del frontend alterado (servidor o dependencia npm) | Sin scripts de terceros, dependencias mínimas y fijadas, Dependabot, código abierto | Medio: limitación conocida del cifrado en web |
 | TURN usado como proxy hacia redes internas (SSRF) | Credenciales temporales y `denied-peer-ip` para rangos privados y de metadatos de la nube | Bajo |
+| TURN usado para gastar ancho de banda (costo de salida de la VM) | Credenciales temporales; `user-quota`, `total-quota`, `max-bps` (2 MB/s por sesión) y `bps-capacity` (10 MB/s en total), y alerta de presupuesto en la nube | Bajo: el peor caso son ~36 GB/h; si se llena el tope, el relevo se degrada para otros usuarios |
 | Abuso del ancho de banda del TURN | Cuotas por usuario y totales, límite de velocidad por sesión | Medio |
 | Inundación de la señalización (DoS) | Cloudflare delante, límites por IP y por conexión, 8443 solo abierto a rangos de Cloudflare | Medio |
 | Secuestro de WebSocket entre sitios (CSWSH) | Validación de `Origin` en el handshake | Bajo |
