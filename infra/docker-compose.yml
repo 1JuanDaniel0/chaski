@@ -34,7 +34,7 @@ services:
 
   coturn:
     # Versión fija. Revisa la última estable antes de desplegar: https://hub.docker.com/r/coturn/coturn/tags
-    image: coturn/coturn:4.6.3
+    image: coturn/coturn:4.18.0
     network_mode: host # el rango UDP de relevo es grande; mapearlo en Docker es lento
     # coturn necesita enlazar el puerto 443 (<1024): arranca como root y él mismo baja privilegios.
     user: root
