@@ -1,7 +1,7 @@
 import { deriveKeys, generateSecret, parseSecret, secretToString } from '../crypto/keys';
 import { cleanDeviceLabel, describeDevice } from '../lib/device';
 import { SignalingClient } from '../signaling/client';
-import type { SignalPayload, TurnConfig } from '../signaling/messages';
+import type { Route, SignalPayload, TurnConfig } from '../signaling/messages';
 import { TransferManager, type ChannelLike, type TransferItem } from '../transfer/manager';
 import { PeerLink } from '../transfer/peer';
 import { QR_EXPIRY_MS, RECONNECT, SIGNAL_URL } from './config';
@@ -19,9 +19,11 @@ export interface View {
   error: string | null;
   /** Lo compartido desde Android que espera a conectarse para enviarse. */
   outbox: Shared | null;
+  /** Por dónde va la conexión: directa (host/srflx) o por el relevo TURN. Null hasta saberlo. */
+  route: Exclude<Route, 'failed'> | null;
 }
 
-const INITIAL: View = { phase: 'starting', shareUrl: null, isOwner: false, peerDevice: null, items: [], warning: null, error: null, outbox: null };
+const INITIAL: View = { phase: 'starting', shareUrl: null, isOwner: false, peerDevice: null, items: [], warning: null, error: null, outbox: null, route: null };
 
 const ERRORS: Record<string, string> = {
   'room-full': 'La sala ya tiene dos dispositivos.',
@@ -382,7 +384,10 @@ export class Controller {
   private async reportRoute(): Promise<void> {
     const gen = this.gen;
     const route = (await this.link?.detectRoute()) ?? 'failed';
-    if (gen === this.gen) this.sig?.report(route, Math.round(performance.now() - this.t0));
+    if (gen !== this.gen) return;
+    this.sig?.report(route, Math.round(performance.now() - this.t0));
+    this.manager?.setPaced(route === 'relay');
+    this.set({ route: route === 'failed' ? null : route });
   }
 
   // ---- Acciones de UI ----

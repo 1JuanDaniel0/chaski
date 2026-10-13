@@ -1,7 +1,7 @@
 import { fileKind } from './filetype';
 import { describe, expect, it } from 'vitest';
 import { describeDevice } from './device';
-import { formatSize } from './format';
+import { etaLabel, formatSize } from './format';
 import { hasExecutableExtension, sanitizeFilename } from './filename';
 
 const RTLO = String.fromCodePoint(0x202e);
@@ -47,6 +47,15 @@ describe('formatSize', () => {
     expect(formatSize(0)).toBe('0 B');
     expect(formatSize(1536)).toBe('1.5 KB');
     expect(formatSize(5 * 1024 * 1024)).toBe('5.0 MB');
+  });
+});
+
+describe('etaLabel', () => {
+  it('no muestra horas mientras el envío arranca', () => {
+    expect(etaLabel(30, 5)).toBe('30 s');
+    expect(etaLabel(300, 5)).toBe('5 min');
+    expect(etaLabel(639 * 60, 10)).toBe('tomando velocidad…');
+    expect(etaLabel(639 * 60, 300)).toBe('639 min');
   });
 });
 
