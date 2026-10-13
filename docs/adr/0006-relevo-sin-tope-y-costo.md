@@ -18,6 +18,17 @@ Por qué pasa:
   3. Botón de donación.
 - Se decide con los números de `ruta_relay` del resumen diario de la señalización y con el gasto real en AWS.
 
+### Arranque gradual por relevo
+Sin los topes, la PC del trabajo seguía atascándose al empezar: en los tres volcados de producción, Chrome descartó entre 403 y 677 paquetes en el primer segundo (`packetsDiscardedOnSend`, su socket no daba abasto con la ráfaga) y el canal pasó 1 a 2 minutos a ~6 KB/s antes de subir a 1,4-1,8 MB/s.
+
+Decisión: si la ruta es `relay`, el emisor dosifica el arranque (`transfer/pacer.ts`). Empieza a 512 KiB/s y duplica el ritmo cada 0,5 s mientras la cola del canal tenga menos de 256 KiB, y pausa con 1 MiB en cola en vez de 8 MiB. Así llega a 8 MiB/s en 2 s y no hay ráfaga grande que descartar. Las conexiones directas no cambian.
+
+Medido en local (coturn 4.18.0, solo relevo, 120 ms de RTT, 16 MB, 2-3 envíos por caso):
+- Sin pérdidas: con ritmo 57-67 s; sin ritmo 51-61 s, y uno de tres se atascó (más de 100 s).
+- Con un cuello de botella de 1,5 MB/s y cola corta: con ritmo 26-33 s y 0 paquetes descartados; sin ritmo 32-54 s, y un envío perdió 699 paquetes.
+
+El laboratorio no reproduce el socket de Windows que se llena, así que la prueba final es repetir el envío de la PC del trabajo. Si no mejora, se quita.
+
 ## Alternativas
 - **Tope más alto en coturn:** sigue siendo un descarte por ventanas de 1 s. En cuanto SCTP lo alcanza, se repite el hundimiento.
 - **Cobrar al usuario normal:** la alternativa gratis está a mano (WhatsApp Web, Drive), y la gente no paga por mandarse archivos a sí misma. Frenaría el crecimiento cuando el costo todavía es bajo.
