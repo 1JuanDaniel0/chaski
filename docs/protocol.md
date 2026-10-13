@@ -161,6 +161,10 @@ Un solo `RTCDataChannel` con etiqueta `chasqui`, `ordered: true`, confiable, `bi
 - Tamaño de trozo: **16 KiB** (16384 bytes) de payload.
 - Control de flujo: pausar cuando `bufferedAmount > 8 MiB`; reanudar con
   `bufferedamountlow` (`bufferedAmountLowThreshold = 1 MiB`).
+- Por el relevo (`relay`), el emisor arranca dosificado: 512 KiB/s que se duplican cada 0,5 s
+  mientras `bufferedAmount < 256 KiB`, con la pausa en 1 MiB en vez de 8 MiB
+  (`transfer/pacer.ts`, ver [ADR 0006](adr/0006-relevo-sin-tope-y-costo.md)). Con la pestaña
+  oculta no se dosifica.
 - El emisor manda `file-done` tras el último trozo. El receptor verifica que recibió
   `ceil(size / 16384)` trozos y `size` bytes en total; si no, lo marca como error.
 

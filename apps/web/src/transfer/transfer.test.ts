@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { FileAssembler } from './assembler';
 import { CHUNK_SIZE, chunkCount, decodeFrame, encodeFrame, splitIntoFrames } from './framing';
 import { TransferManager, type ChannelLike, type TransferItem } from './manager';
+import { PACE_GROW_BELOW, PACE_START, PACE_STEP_MS, Pacer } from './pacer';
 import { parseControl } from './protocol';
 import { routeFromStats } from './route';
 import { sdpFingerprints } from './peer';
@@ -157,6 +158,63 @@ describe('TransferManager', () => {
     if (inc.status === 'active') B.cancel('in', inc.id);
     await new Promise((r) => setTimeout(r, 200));
     expect(['cancelled', 'done']).toContain(ia[0]!.status);
+  });
+});
+
+describe('arranque gradual', () => {
+  /** Envía trozos de 16 KiB durante `ms` con un reloj falso; devuelve los bytes que dejó pasar. */
+  function run(p: Pacer, clock: { t: number }, ms: number, buffered = 0): number {
+    const end = clock.t + ms;
+    let sent = 0;
+    while (clock.t < end) {
+      const w = p.wait(CHUNK_SIZE, buffered);
+      if (w === 0) sent += CHUNK_SIZE;
+      else clock.t += w;
+    }
+    return sent;
+  }
+
+  it('empieza en PACE_START y se duplica cada paso si la cola está vacía', () => {
+    const clock = { t: 0 };
+    const p = new Pacer(() => clock.t);
+    const first = run(p, clock, PACE_STEP_MS);
+    expect(first).toBeGreaterThan(PACE_START * 0.4);
+    expect(first).toBeLessThan(PACE_START * 0.6);
+    // Se duplica al cumplirse cada paso: a los 500, 1000 y 1500 ms.
+    run(p, clock, PACE_STEP_MS * 3);
+    expect(p.bytesPerSecond).toBe(PACE_START * 8);
+  });
+
+  it('no acelera mientras el canal tenga cola', () => {
+    const clock = { t: 0 };
+    const p = new Pacer(() => clock.t);
+    run(p, clock, PACE_STEP_MS * 4, PACE_GROW_BELOW);
+    expect(p.bytesPerSecond).toBe(PACE_START);
+  });
+
+  it('tras una pausa no suelta una ráfaga', () => {
+    const clock = { t: 0 };
+    const p = new Pacer(() => clock.t);
+    clock.t += 10_000;
+    let burst = 0;
+    while (p.wait(CHUNK_SIZE, PACE_GROW_BELOW) === 0) burst += CHUNK_SIZE;
+    expect(burst).toBeLessThanOrEqual(Math.max(CHUNK_SIZE, PACE_START * 0.05) + CHUNK_SIZE);
+  });
+
+  it('el envío dosificado llega completo', async () => {
+    const [ca, cb, setA, setB] = pair();
+    let ib: TransferItem[] = [];
+    const A = new TransferManager(ca, () => undefined, true);
+    const B = new TransferManager(cb, (i) => (ib = i), false);
+    setA((m) => A.onMessage(m));
+    setB((m) => B.onMessage(m));
+    A.setPaced(true);
+    const data = new Uint8Array(randomBytes(CHUNK_SIZE * 12));
+    A.sendFile(new File([data], 'a.bin'));
+    await new Promise((r) => setTimeout(r, 1500));
+    const f = ib.find((i) => i.kind === 'file')!;
+    expect(f.status).toBe('done');
+    expect(Buffer.from(await f.blob!.arrayBuffer()).equals(Buffer.from(data))).toBe(true);
   });
 });
 
