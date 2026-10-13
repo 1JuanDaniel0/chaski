@@ -135,6 +135,7 @@ chasqui/
 - **Dispositivos de confianza:** emparejar tu propia laptop una vez y reconectar sin QR (como KDE Connect o LocalSend). Se hará si muchos usuarios piden reconectar sus propios dispositivos.
 - **Cuentas con historial: descartado por ahora.** Choca con el caso de uso (la PC ajena, donde no se debe iniciar sesión) y con la promesa "nada se guarda", además de sumar costos de almacenamiento, riesgo de abuso y obligaciones de la Ley 29733.
 - **App en la Play Store:** primero como TWA (la misma PWA empaquetada); app nativa solo si hacen falta transferencias en segundo plano.
+- **Costo del relevo TURN:** Chaski sigue gratis. Si el gasto del relevo crece: (1) límite suave por relevo, por ejemplo 2 GB al día por sala; (2) plan de pago para negocios con RF7; (3) donaciones. Por qué y con qué números se decide: [ADR 0006](docs/adr/0006-relevo-sin-tope-y-costo.md).
 
 ## Contribuir y seguridad
 

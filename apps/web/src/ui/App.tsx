@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState, useSyncExternalStore, type DragEv
 import { AnimatePresence, m } from 'motion/react';
 import { ArrowClockwise, DeviceMobile, DownloadSimple, Laptop, LockSimple, Monitor, Moon, Sun, UploadSimple, X } from '@phosphor-icons/react';
 import { Controller, type Phase } from '../app/controller';
+import type { Route } from '../signaling/messages';
 import { Logo, LogoMark } from './brand/Logo';
 import { PairScreen } from './screens/PairScreen';
 import { ScanScreen } from './screens/ScanScreen';
@@ -30,6 +31,13 @@ const STAGE: Record<Phase, Stage> = {
 const ENDED: Partial<Record<Phase, string>> = {
   'peer-left': 'El otro dispositivo se desconectó',
   kicked: 'El otro dispositivo terminó la sesión y se borró el chat',
+};
+
+/** Junto a "Conectado con…": por el relevo puede ir más lento, y así no parece que Chaski esté fallando. */
+const ROUTE: Record<Exclude<Route, 'failed'>, string> = {
+  host: 'Conexión directa',
+  srflx: 'Conexión directa',
+  relay: 'Por relevo: puede ir más lento',
 };
 
 const isPhone = (label: string | null) => !!label && /Android|iOS/.test(label);
@@ -72,7 +80,7 @@ export function App() {
 
   const peer = v.peerDevice ?? 'otro dispositivo';
   const system = [
-    ...(connectedAt.current ? [{ key: 'on', text: `Conectado con ${peer} · ${clock(connectedAt.current)}` }] : []),
+    ...(connectedAt.current ? [{ key: 'on', text: `Conectado con ${peer} · ${clock(connectedAt.current)}${v.route ? ` · ${ROUTE[v.route]}` : ''}` }] : []),
     ...(v.phase === 'reconnecting' ? [{ key: 're', text: 'Reconectando…' }] : []),
     ...(stage === 'chat' && !usable ? [{ key: 'off', text: ENDED[v.phase] ?? v.error ?? 'Se perdió la conexión' }] : []),
   ];

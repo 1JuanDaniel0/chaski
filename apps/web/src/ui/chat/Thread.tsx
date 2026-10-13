@@ -2,7 +2,7 @@ import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 're
 import { AnimatePresence, m } from 'motion/react';
 import { ArrowSquareOut, Check, Checks, Copy, DownloadSimple, File, FileAudio, FileDoc, FileImage, FilePdf, FilePpt, FileText, FileVideo, FileXls, FileZip, Warning, X } from '@phosphor-icons/react';
 import { fileKind, type FileKind } from '../../lib/filetype';
-import { formatSize } from '../../lib/format';
+import { etaLabel, formatSize } from '../../lib/format';
 import type { TransferItem } from '../../transfer/manager';
 import { EASE } from '../motion';
 
@@ -91,24 +91,25 @@ function openPdf(blob: Blob): void {
   setTimeout(() => URL.revokeObjectURL(url), 60_000);
 }
 
-/** Velocidad en bytes/s de los últimos ~3 s de un envío en curso; null mientras no hay datos suficientes. */
-function useRate(bytes: number, running: boolean): number | null {
+/** Velocidad en bytes/s de los últimos ~3 s de un envío en curso, y segundos desde que empezó; rate null mientras no hay datos suficientes. */
+function useRate(bytes: number, running: boolean): { rate: number | null; elapsed: number } {
   const samples = useRef<{ t: number; b: number }[]>([]);
+  const started = useRef<number | null>(null);
   if (!running) {
     samples.current = [];
-    return null;
+    started.current = null;
+    return { rate: null, elapsed: 0 };
   }
   const now = performance.now();
+  started.current ??= now;
   const s = samples.current;
   if (s.at(-1)?.b !== bytes) s.push({ t: now, b: bytes });
   while (s.length > 2 && now - s[0]!.t > 3000) s.shift();
   const first = s[0]!;
   const last = s.at(-1)!;
   const secs = (last.t - first.t) / 1000;
-  return secs >= 0.5 ? (last.b - first.b) / secs : null;
+  return { rate: secs >= 0.5 ? (last.b - first.b) / secs : null, elapsed: (now - started.current) / 1000 };
 }
-
-const eta = (secs: number) => (secs < 60 ? `${Math.max(1, Math.round(secs))} s` : `${Math.round(secs / 60)} min`);
 
 function Progress({ pct, mine }: { pct: number; mine: boolean }) {
   return (
@@ -139,8 +140,8 @@ function Bubble({ item, at, onCancel }: { item: TransferItem; at: number; onCanc
   const isImage = !!visual;
   const fail = () => setBroken(true);
 
-  const rate = useRate(item.transferred, running && item.status === 'active');
-  const speed = rate && rate > 0 ? ` · ${formatSize(Math.round(rate))}/s · ${eta((item.size - item.transferred) / rate)}` : '';
+  const { rate, elapsed } = useRate(item.transferred, running && item.status === 'active');
+  const speed = rate && rate > 0 ? ` · ${formatSize(Math.round(rate))}/s · ${etaLabel((item.size - item.transferred) / rate, elapsed)}` : '';
 
   const ping = () => {
     setFlash(true);
