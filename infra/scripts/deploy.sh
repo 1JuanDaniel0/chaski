@@ -21,5 +21,11 @@ fi
 
 docker compose pull
 docker compose up -d --remove-orphans
+# `up -d` no ve cambios en coturn/turnserver.conf: git pull lo reemplaza por un archivo nuevo y el
+# contenedor sigue montando el viejo. Si no coinciden, recrea coturn para que cargue el actual.
+if ! docker compose exec -T coturn cat /etc/coturn/turnserver.conf 2>/dev/null | cmp -s - coturn/turnserver.conf; then
+  echo "La configuración de coturn cambió: recreando coturn"
+  docker compose up -d --force-recreate coturn
+fi
 docker image prune -f >/dev/null
 docker compose ps
