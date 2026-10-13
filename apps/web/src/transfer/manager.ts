@@ -1,6 +1,7 @@
 import { sanitizeFilename, hasExecutableExtension } from '../lib/filename';
 import { HIGH_WATER, MAX_FILE_BYTES, chunkCount, decodeFrame, splitIntoFrames } from './framing';
 import { FileAssembler } from './assembler';
+import { PACED_HIGH_WATER, Pacer } from './pacer';
 import { parseControl, type Control } from './protocol';
 
 /** Lo mínimo que necesitamos de un RTCDataChannel (permite probar con un doble). */
@@ -33,6 +34,8 @@ export interface TransferItem {
 
 const READ_SLICE = 1024 * 1024;
 
+const isHidden = (): boolean => typeof document !== 'undefined' && document.hidden;
+
 export class TransferManager {
   private items = new Map<string, TransferItem>();
   private outFiles = new Map<number, { file: Blob; accepted: boolean }>();
@@ -42,6 +45,8 @@ export class TransferManager {
   private drainWaiters: Array<() => void> = [];
   private closed = false;
   private timer: ReturnType<typeof setTimeout> | null = null;
+  /** Arranque gradual (ver {@link Pacer}): solo cuando la ruta va por el relevo. */
+  private paced = false;
 
   constructor(
     private ch: ChannelLike,
@@ -52,6 +57,11 @@ export class TransferManager {
     // ids disjuntos por lado (dueño impares, invitado pares) para que file-cancel no sea ambiguo.
     this.nextId = isOwner ? 1 : 2;
     ch.onDrain = () => this.flushDrain();
+  }
+
+  /** La ruta se conoce poco después de abrir el canal; afecta a los envíos que empiecen desde entonces. */
+  setPaced(paced: boolean): void {
+    this.paced = paced;
   }
 
   snapshot(): TransferItem[] {
@@ -203,14 +213,18 @@ export class TransferManager {
     const it = this.items.get(`out:${id}`);
     if (!o || !it) return;
     let index = 0;
+    const pacer = this.paced ? new Pacer() : null;
+    const high = pacer ? PACED_HIGH_WATER : HIGH_WATER;
     for (let off = 0; off < o.file.size; off += READ_SLICE) {
       if (this.closed || it.status !== 'active') return;
       const slice = new Uint8Array(await o.file.slice(off, off + READ_SLICE).arrayBuffer());
       for (const frame of splitIntoFrames(id, slice, index)) {
-        while (this.ch.bufferedAmount > HIGH_WATER) {
+        while (this.ch.bufferedAmount > high) {
           await new Promise<void>((r) => this.drainWaiters.push(r));
           if (this.closed) return;
         }
+        if (pacer) await this.pace(pacer, frame.byteLength);
+        if (this.closed) return;
         if (it.status !== 'active') return;
         this.ch.send(frame);
         index++;
@@ -223,6 +237,14 @@ export class TransferManager {
     this.sendCtl({ t: 'file-done', id });
     it.transferred = it.size;
     this.finishItem(it, 'done');
+  }
+
+  private async pace(p: Pacer, bytes: number): Promise<void> {
+    let ms: number;
+    // Con la pestaña oculta los temporizadores se frenan a uno por segundo o menos: ahí no se dosifica.
+    while ((ms = p.wait(bytes, this.ch.bufferedAmount)) > 0 && !this.closed && !isHidden()) {
+      await new Promise<void>((r) => setTimeout(r, ms));
+    }
   }
 
   private flushDrain(): void {
