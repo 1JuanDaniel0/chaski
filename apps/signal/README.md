@@ -20,6 +20,7 @@ docker build -t chasqui-signal .
 | `TURN_SECRET`       | (vacío)                                       | Si falta, `joined` no incluye `turn`           |
 | `TURN_URLS`         | (vacío)                                       | URLs TURN separadas por coma                   |
 | `TURN_TTL_SECONDS`  | `3600`                                        | Vida de las credenciales TURN                  |
+| `TURN_PER_IP_PER_DAY` | `100`                                        | Credenciales TURN por IP al día; pasado eso, solo conexión directa |
 | `MANAGEMENT_PORT`   | `9090`                                        | `/actuator/health` y `/actuator/prometheus`    |
 
 Los demás límites (§6 del protocolo) son propiedades `chasqui.*` en `application.yml`.

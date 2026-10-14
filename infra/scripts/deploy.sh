@@ -27,5 +27,14 @@ if ! docker compose exec -T coturn cat /etc/coturn/turnserver.conf 2>/dev/null |
   echo "La configuración de coturn cambió: recreando coturn"
   docker compose up -d --force-recreate coturn
 fi
+# Tope de gasto del relevo: se revisa cada minuto y ahora mismo (por si este despliegue encendió un coturn
+# apagado por el tope). Ver scripts/turn-budget.sh.
+if command -v crontab >/dev/null 2>&1; then
+  CRON_LINE="* * * * * $INFRA_DIR/scripts/turn-budget.sh >> $INFRA_DIR/turn-budget.log 2>&1"
+  { crontab -l 2>/dev/null | grep -vF 'scripts/turn-budget.sh' || true; echo "$CRON_LINE"; } | crontab -
+else
+  echo "AVISO: no hay cron; el tope de gasto del relevo no se revisará solo" >&2
+fi
+"$INFRA_DIR/scripts/turn-budget.sh" --status
 docker image prune -f >/dev/null
 docker compose ps
