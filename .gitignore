@@ -11,3 +11,4 @@ certs/
 .idea/
 .vscode/
 *.iml
+infra/.turn-budget

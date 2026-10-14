@@ -85,6 +85,7 @@ Pasos:
 ## 7. Configurar y arrancar
 
 - [ ] `cp infra/.env.example infra/.env` y rellena `TURN_SECRET` (`openssl rand -hex 32`), `TURN_EXTERNAL_IP` y `SIGNAL_TAG`.
+- [ ] Ajusta `TURN_MONTHLY_GB` en `infra/.env`: los GB que pueden salir de la VM al mes antes de apagar el relevo (50 por defecto; en Oracle, con 10 TB gratis, puede ser mucho más). `deploy.sh` instala la revisión en cron. Para ver lo gastado: `infra/scripts/turn-budget.sh --status`.
 - [ ] Primer despliegue: `infra/scripts/deploy.sh` (necesita que la imagen ya esté en GHCR: haz un push a `main` que toque `apps/signal`).
 - [ ] En GitHub, vuelve el paquete `chasqui-signal` público, o haz `docker login ghcr.io` en la VM con un token de solo lectura.
 - [ ] Prueba: `curl -I https://signal.<dominio>` y sigue la [prueba de punta a punta](#prueba-de-punta-a-punta).

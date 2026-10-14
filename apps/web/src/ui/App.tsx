@@ -37,7 +37,7 @@ const ENDED: Partial<Record<Phase, string>> = {
 const ROUTE: Record<Exclude<Route, 'failed'>, string> = {
   host: 'Conexión directa',
   srflx: 'Conexión directa',
-  relay: 'Por relevo: puede ir más lento',
+  relay: 'Por relevo: puede ir más lento. En el mismo wifi va directo',
 };
 
 const isPhone = (label: string | null) => !!label && /Android|iOS/.test(label);

@@ -46,7 +46,7 @@ class RoomRegistryTest {
     void setUp() {
         clock = new MutableClock();
         var props = new ChasquiProperties(List.of(), 65536, 2, 10, 20, Duration.ofMinutes(10), Duration.ofMinutes(30),
-                30000, new ChasquiProperties.Turn("", List.of(), 3600));
+                30000, new ChasquiProperties.Turn("", List.of(), 3600, 30));
         registry = new RoomRegistry(props, clock, new SignalMetrics(new SimpleMeterRegistry()));
     }
 
