@@ -33,6 +33,7 @@ chasqui:
     secret: ${TURN_SECRET:}
     urls: ${TURN_URLS:}
     ttl-seconds: ${TURN_TTL_SECONDS:3600}
+    per-ip-per-day: ${TURN_PER_IP_PER_DAY:100}
 
 logging:
   pattern:
