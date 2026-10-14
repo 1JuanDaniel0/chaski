@@ -172,7 +172,7 @@ public class SignalHandler extends TextWebSocketHandler {
             case RoomRegistry.JoinResult.Full f -> fail(st, ErrorCode.ROOM_FULL, "room is full");
             case RoomRegistry.JoinResult.Joined ok -> {
                 st.peer = ok.peer();
-                st.send(Frames.joined(ok.peer().id(), ok.others(), turn.issue()));
+                st.send(Frames.joined(ok.peer().id(), ok.others(), turn.issue(st.ip)));
                 if (ok.replaced() != null) {
                     // Mismo dispositivo, mismo peerId: el otro no necesita enterarse. Su socket viejo se cierra
                     // y su leave() no hace nada porque ya no está en la sala.
