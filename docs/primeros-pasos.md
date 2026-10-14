@@ -17,25 +17,25 @@ Checklist en orden. Reemplaza `chaski.me` por tu dominio real en: `infra/docker-
 
 > **Hoy la VM está en AWS**, de forma temporal (ver [ADR 0005](adr/0005-oracle-cloudflare-hosting.md)). En AWS los pasos equivalen: instancia EC2 con Ubuntu, Elastic IP en vez de IP reservada y Security Group con los mismos puertos de la tabla. `provision-vm.sh` instala Docker y agrega sus reglas igual, pero el Ubuntu de AWS acepta todo por defecto en iptables, así que **quien limita el 8443 a los rangos de Cloudflare es el Security Group**: no lo abras a 0.0.0.0/0. Para la IP privada de `TURN_EXTERNAL_IP` usa la de `ip a` en la instancia. Para pasar de AWS a Oracle sigue la [sección 11](#11-mudanza-de-aws-a-oracle).
 
-**Límites Always Free que importan** (revisados en octubre de 2026, confírmalos en *Governance, Limits, Quotas and Usage* de la consola porque Oracle los cambia):
+**Límites Always Free que importan** (según la página *Recursos Siempre gratis* de Oracle en octubre de 2026; en la consola están en *Gobernanza y administración, Límites, cuotas y uso*):
 
 | Recurso | Gratis por cuenta | Chaski usa | Queda para otros proyectos |
 |---------|-------------------|------------|----------------------------|
 | Ampere A1 (VM.Standard.A1.Flex) | 2 OCPU y 12 GB de RAM en total (1.500 OCPU-hora y 9.000 GB-hora al mes) | 1 OCPU y 6 GB | 1 OCPU y 6 GB |
-| Disco (boot + block, en conjunto) | 200 GB | 50 GB de boot | 150 GB |
+| Disco (boot + block, en conjunto) | 200 GB (boot mínimo de 47 GB) | 50 GB de boot | 150 GB |
 | Salida de datos a internet | 10 TB al mes | Lo que pase por TURN | Compartido |
 | VM AMD (VM.Standard.E2.1.Micro) | 2 VM de 1/8 OCPU y 1 GB | Nada | 2 |
 
-- Desde el 2026-06-15 el A1 gratis bajó de 4 OCPU y 24 GB a 2 OCPU y 12 GB, y desde el 2026-08-18 Oracle termina las instancias que se pasan. La lista de precios todavía dice que una cuenta de pago tiene 4 OCPU y 24 GB gratis, y soporte ha respondido distinto a distintas personas, así que **no pases de 2 OCPU y 12 GB entre todas tus VM A1** hasta tenerlo por escrito.
-- El A1 gratis solo existe en la **región de origen** (home region), la que elegiste al crear la cuenta; no se puede cambiar.
-- Con Pay As You Go (PAYG) Oracle no reclama las instancias por estar ociosas (en Always Free sí: menos de 20% de CPU, red y memoria durante 7 días). A cambio, todo lo que pase de Always Free **se cobra en la tarjeta**. En la consola, lo gratis lleva la etiqueta *Always Free-eligible*: si al crear algo no la ves, para.
+- Desde junio de 2026 el A1 gratis bajó de 4 OCPU y 24 GB a 2 OCPU y 12 GB. La documentación dice que **todas** las cuentas, gratuitas o de pago, tienen 1.500 OCPU-hora y 9.000 GB-hora al mes, aunque la lista de precios todavía habla de 3.000 y 18.000 para cuentas de pago. **No pases de 2 OCPU y 12 GB entre todas tus VM A1.**
+- Lo gratis solo existe en la **región de origen** (home region), la que se eligió al crear la cuenta y que no se puede cambiar. La de Chaski es **Santiago** (`sa-santiago-1`), más cerca de Lima que el São Paulo de AWS, así que el relevo debería tener menos latencia. Santiago tiene un solo dominio de disponibilidad: si sale "Out of capacity" no hay otro al que cambiar, solo reintentar más tarde.
+- Oracle puede reclamar VM Always Free inactivas (CPU en el percentil 95, red y memoria por debajo del 20% durante 7 días), y Chaski casi siempre lo parecería. La página no lo aclara, pero según correos de Oracle citados en foros no aplica a cuentas Pay As You Go (PAYG), como la de Chaski. Si llega un aviso de reclamación, hay que tomarlo en serio. A cambio, todo lo que pase de Always Free **se cobra en la tarjeta**; Oracle recomienda cuotas de compartimento para controlarlo ([11.1](#111-presupuesto-y-cuota)). En la consola, lo gratis lleva la etiqueta *Always Free-eligible*: si al crear algo no la ves, para.
 - El ancho de banda del A1 es de 1 Gbps por OCPU, así que 1 OCPU basta para TURN.
 
 Pasos:
 
 - [ ] Crea la cuenta de Oracle Cloud y pásala a Pay As You Go (ya hecho).
-- [ ] En *Identity, Compartments*, crea el compartimento `chaski` y crea todo lo de abajo dentro de él. Así el presupuesto y la cuota del [paso 11.1](#111-presupuesto-y-cuota) lo cubren solo a él.
-- [ ] Crea una instancia **Ampere A1** (`VM.Standard.A1.Flex`) con **1 OCPU y 6 GB de RAM**, imagen *Canonical Ubuntu 24.04* (aarch64) y boot volume de **50 GB** con rendimiento *Balanced* (más VPU se cobra). Si sale "Out of capacity", prueba otro dominio de disponibilidad o vuelve más tarde.
+- [ ] En *Identity, Compartments*, crea el compartimento `chaski` y crea todo lo de abajo dentro de él. Así la cuota del [paso 11.1](#111-presupuesto-y-cuota) limita solo a Chaski y no a tus otros proyectos.
+- [ ] Crea una instancia **Ampere A1** (`VM.Standard.A1.Flex`) con **1 OCPU y 6 GB de RAM**, imagen *Canonical Ubuntu 24.04* (aarch64) y boot volume de **50 GB** con rendimiento *Balanced* (más VPU se cobra). Si sale "Out of capacity", vuelve a intentarlo más tarde.
 - [ ] Sube tu llave SSH pública al crearla.
 - [ ] Deja que el asistente cree la VCN con subred pública. Después, en la VNIC de la VM, cambia la IP pública efímera por una **IP pública reservada** (*Reserved public IP*), así no cambia si recreas la VM.
 - [ ] En la VCN, edita la **Security List** de la subred pública (reglas *stateful*, de entrada) y abre:
@@ -157,8 +157,8 @@ Settings, Branches (o Rulesets), regla para `main`:
 La idea es montar la VM de Oracle **al lado** de la de AWS, probarla sin tocar a los usuarios y recién después cambiar el DNS. Como las dos usan el mismo `TURN_SECRET`, las credenciales que da cualquiera de las dos señalizaciones sirven en los dos coturn, así que durante el cambio nadie se queda sin relevo. El frontend (Cloudflare Pages) no se mueve.
 
 Dos cosas que cambian con Oracle:
-- **Costo del relevo.** Oracle regala 10 TB de salida al mes, frente a los ~0,09 USD/GB de AWS, así que cualquier tope de GB del relevo se puede subir mucho sin pagar. Pasados los 10 TB se cobra por GB (mira la lista de precios de Oracle).
-- **Latencia del relevo.** Si coturn sigue en la VM, el relevo queda en la región de origen de Oracle; con AWS estaba en São Paulo. Si el relevo pasa a un servicio externo (por ejemplo TURN de Cloudflare), sáltate todo lo de coturn: los puertos 3478, 443 y 49160-49360, el certificado de Let's Encrypt, `TURN_EXTERNAL_IP` y el registro `turn`.
+- **Costo del relevo.** Oracle regala 10 TB de salida al mes, frente a los ~0,09 USD/GB de AWS, así que el tope `TURN_MONTHLY_GB` sube de 50 a 5000 GB sin pagar nada. Pasados los 10 TB se cobra por GB (mira la lista de precios de Oracle).
+- **Latencia del relevo.** coturn sigue en la VM, así que el relevo pasa de São Paulo a Santiago.
 
 ### 11.1 Presupuesto y cuota
 
@@ -184,7 +184,7 @@ set block-storage quota total-storage-gb to 60 in compartment chaski
 
 - [ ] Haz la [sección 3](#3-cuenta-de-oracle-y-vm) completa en Oracle.
 - [ ] Copia de la VM de AWS a la de Oracle, sin cambiar nada en AWS (por ejemplo con `scp` pasando por tu PC):
-  - `~/chasqui/infra/.env`: copia `TURN_SECRET` y `SIGNAL_TAG` tal cual y cambia `TURN_EXTERNAL_IP` por `IPpúblicaOracle/IPprivadaOracle`.
+  - `~/chasqui/infra/.env`: copia `TURN_SECRET` y `SIGNAL_TAG` tal cual, cambia `TURN_EXTERNAL_IP` por `IPpúblicaOracle/IPprivadaOracle` y sube `TURN_MONTHLY_GB` a **5000**. Son 5 TB, la mitad de los 10 TB gratis de salida, que se comparten con las otras VM de la cuenta. El contador empieza de cero en la VM nueva.
   - `~/chasqui/infra/certs/origin/origin.pem` y `origin.key` (`chmod 600 origin.key`). También puedes crear otro certificado de origen en Cloudflare ([sección 5](#5-certificado-de-origen-para-la-señalización-8443)).
   - `/etc/letsencrypt/cloudflare.ini` (`chmod 600`).
 - [ ] Certificado de TURN: `sudo infra/scripts/renew-turn-cert.sh`. Usa el desafío DNS, así que funciona aunque `turn.` todavía apunte a AWS.
@@ -195,6 +195,7 @@ set block-storage quota total-storage-gb to 60 in compartment chaski
 ### 11.3 Probar antes del cambio
 
 - [ ] En la VM de Oracle: `docker compose -f infra/docker-compose.yml ps` (los dos `Up`) y `curl -s localhost:9090/actuator/health` (`UP`).
+- [ ] Tope de salida: `crontab -l` debe mostrar la línea de `turn-budget.sh` que pone `deploy.sh`, e `infra/scripts/turn-budget.sh --status` debe decir "… GB de 5000 GB". El script toma sola la interfaz de salida (`ip route show default`).
 - [ ] Desde tu PC, saca credenciales de producción: `node infra/scripts/smoke-signal.mjs wss://signal.chaski.me/ws https://chaski.me`.
 - [ ] En [Trickle ICE](https://webrtc.github.io/samples/src/content/peerconnection/trickle-ice/), con esas credenciales y política "relay", prueba `turn:<IP pública de Oracle>:3478?transport=udp` y `?transport=tcp`. Debe salir un candidato `relay` con la IP de Oracle. Si no sale nada, revisa los dos firewalls (Security List y `sudo iptables -L INPUT -n`) y `TURN_EXTERNAL_IP`.
 
