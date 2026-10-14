@@ -141,6 +141,7 @@ Un solo `RTCDataChannel` con etiqueta `chasqui`, `ordered: true`, confiable, `bi
 { "t": "file-accept", "id": 1 }
 { "t": "file-cancel", "id": 1, "reason": "user" | "too-large" | "error" }
 { "t": "file-done",   "id": 1 }
+{ "t": "file-ack",    "id": 1, "bytes": 65536 }
 { "t": "text",        "id": 2, "text": "hola" }
 { "t": "end" }
 ```
@@ -151,6 +152,10 @@ Un solo `RTCDataChannel` con etiqueta `chasqui`, `ordered: true`, confiable, `bi
 - En v1 el receptor acepta solo (`file-accept`) si `size <= 500 MB`; si no, responde
   `file-cancel` con `reason: "too-large"`. El emisor NO DEBE mandar trozos antes del `file-accept`.
 - Cualquiera de los dos lados puede cancelar en cualquier momento con `file-cancel`.
+- `file-ack`: el receptor confirma cuántos bytes del archivo tiene, con cada trozo pero no más
+  seguido que cada 10 ms (lo que llegue en ese lapso se confirma al cumplirse), y una última vez
+  con `bytes = size` al recibir `file-done`. El emisor lo usa para la barra de progreso y, por el
+  relevo, para su ventana de envío. Una versión que no lo conoce lo ignora.
 
 ### 5.2 Datos (frames binarios)
 
@@ -161,11 +166,13 @@ Un solo `RTCDataChannel` con etiqueta `chasqui`, `ordered: true`, confiable, `bi
 - Tamaño de trozo: **16 KiB** (16384 bytes) de payload.
 - Control de flujo: pausar cuando `bufferedAmount > 8 MiB`; reanudar con
   `bufferedamountlow` (`bufferedAmountLowThreshold = 1 MiB`).
-- Por el relevo (`relay`), el emisor arranca dosificado: 512 KiB/s que se duplican cada 0,5 s
-  mientras `bufferedAmount < 256 KiB`, con la pausa en 1 MiB en vez de 8 MiB
+- Por el relevo (`relay`), el emisor además limita los bytes en vuelo (enviados y aún sin
+  `file-ack`) con una ventana al estilo de TCP Vegas, y los reparte a lo largo del RTT
   (`transfer/pacer.ts`, ver [ADR 0006](adr/0006-relevo-sin-tope-y-costo.md)). Con la pestaña
-  oculta no se dosifica.
-- El emisor manda `file-done` tras el último trozo. El receptor verifica que recibió
+  oculta no se reparte, solo se limita. Si en 2 s no llega ningún `file-ack`, el otro lado es
+  una versión vieja y se envía sin ventana.
+- El emisor manda `file-done` tras el último trozo y, si el receptor confirma, lo da por
+  entregado con el último `file-ack` (o a los 30 s). El receptor verifica que recibió
   `ceil(size / 16384)` trozos y `size` bytes en total; si no, lo marca como error.
 
 ## 6. Límites (valores iniciales, configurables)

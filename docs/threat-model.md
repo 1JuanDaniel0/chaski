@@ -15,8 +15,7 @@ El cifrado resuelve el tránsito. Los riesgos reales están en el código que si
 | Código del frontend alterado (servidor o dependencia npm) | Sin scripts de terceros, dependencias mínimas y fijadas, Dependabot, código abierto | Medio: limitación conocida del cifrado en web |
 | TURN usado como proxy hacia redes internas (SSRF) | Credenciales temporales y `denied-peer-ip` para rangos privados y de metadatos de la nube | Bajo |
 | Agotar los puertos de relevo de coturn (CVE-2026-73215) | coturn 4.18.0 (corregido desde 4.17.0); versión fija en `docker-compose.yml` | Bajo |
-| TURN usado para gastar ancho de banda (costo de salida de la VM) | Credenciales temporales; `user-quota`, `total-quota` y alerta de presupuesto en la nube. Sin `max-bps` ni `bps-capacity`: coturn descarta lo que pasa del tope en vez de encolarlo y eso hundía las transferencias por relevo a pocos KB/s; `bps-capacity` además rechazaba conexiones nuevas ([ADR 0006](adr/0006-relevo-sin-tope-y-costo.md)) | Medio: no hay tope de velocidad; lo limitan la tarjeta de red de la VM y la alerta de presupuesto |
-| Abuso del ancho de banda del TURN | Cuotas por usuario y totales (sin límite de velocidad, ver fila anterior) | Medio |
+| TURN usado para gastar ancho de banda (costo de salida de la VM) | Credenciales temporales, como máximo 100 por IP al día; `user-quota` y `total-quota`; tope duro mensual que apaga coturn al pasar `TURN_MONTHLY_GB` (`infra/scripts/turn-budget.sh`). Sin `max-bps` ni `bps-capacity`, que hundían las transferencias por relevo ([ADR 0006](adr/0006-relevo-sin-tope-y-costo.md)) | Bajo: lo peor es perder el relevo hasta fin de mes |
 | Inundación de la señalización (DoS) | Cloudflare delante, límites por IP y por conexión, 8443 solo abierto a rangos de Cloudflare | Medio |
 | Secuestro de WebSocket entre sitios (CSWSH) | Validación de `Origin` en el handshake | Bajo |
 | Distribución de malware con enlaces públicos | No hay enlaces persistentes: solo dos dispositivos conectados en vivo | Bajo |
@@ -29,7 +28,7 @@ Firefox Send cerró en 2020 porque sus enlaces se usaban para repartir malware. 
 - **Frontend servido por la misma entidad que lo audita.** Si alguien compromete Cloudflare Pages o una dependencia npm, puede servir JavaScript que lea `location.hash`. Por eso: sin terceros, dependencias mínimas, código abierto y CSP.
 - **QR visible.** Quien lo vea o fotografíe mientras la sala está abierta y sin segundo dispositivo podría unirse primero. El usuario ve quién se conectó y puede expulsarlo.
 - **Metadatos.** Cada dispositivo ve la IP del otro (así funciona WebRTC). El servidor de señalización y TURN ven IPs y tamaños aproximados de tráfico. Los logs no guardan IPs ni `roomId`.
-- **Abuso de TURN y costo de salida.** Mitigado con cuotas; se vigila con métricas.
+- **Abuso de TURN y costo de salida.** Mitigado con cuotas, límite de credenciales por IP y un tope mensual que apaga el relevo.
 - **Proxies con inspección TLS** pueden bloquear incluso TURN sobre 443.
 - **Dependencia del proveedor de la VM (hoy AWS) y de Cloudflare** para disponibilidad (el contenido sigue cifrado aunque fallen).
 - **PC de destino:** cualquier cosa que ocurra en ella queda fuera de lo que Chasqui puede proteger. Se recomienda borrar lo descargado al terminar.

@@ -1,7 +1,7 @@
 import { sanitizeFilename, hasExecutableExtension } from '../lib/filename';
-import { HIGH_WATER, MAX_FILE_BYTES, chunkCount, decodeFrame, splitIntoFrames } from './framing';
+import { HEADER_BYTES, HIGH_WATER, MAX_FILE_BYTES, chunkCount, decodeFrame, splitIntoFrames } from './framing';
 import { FileAssembler } from './assembler';
-import { PACED_HIGH_WATER, Pacer } from './pacer';
+import { ACK_MIN_GAP_MS, ACK_TIMEOUT_MS, SendWindow } from './pacer';
 import { parseControl, type Control } from './protocol';
 
 /** Lo mínimo que necesitamos de un RTCDataChannel (permite probar con un doble). */
@@ -36,16 +36,36 @@ const READ_SLICE = 1024 * 1024;
 
 const isHidden = (): boolean => typeof document !== 'undefined' && document.hidden;
 
+/** Al terminar de enviar, cuánto se espera la última confirmación antes de darlo por entregado igual. */
+const FINAL_ACK_TIMEOUT_MS = 30_000;
+
+interface InFile {
+  asm: FileAssembler;
+  mime: string;
+  ackedAt: number;
+  /** Confirmación pendiente: lo que llegue dentro de ACK_MIN_GAP_MS se confirma junto al final. */
+  ackTimer: ReturnType<typeof setTimeout> | null;
+}
+
+interface OutFile {
+  file: Blob;
+  accepted: boolean;
+  /** Bytes que el receptor confirmó (0 si es una versión que no confirma). */
+  acked: number;
+  win: SendWindow | null;
+}
+
 export class TransferManager {
   private items = new Map<string, TransferItem>();
-  private outFiles = new Map<number, { file: Blob; accepted: boolean }>();
-  private inAsm = new Map<number, { asm: FileAssembler; mime: string }>();
+  private outFiles = new Map<number, OutFile>();
+  private inAsm = new Map<number, InFile>();
   private nextId: number;
   private pumpChain: Promise<void> = Promise.resolve();
   private drainWaiters: Array<() => void> = [];
+  private ackWaiters: Array<() => void> = [];
   private closed = false;
   private timer: ReturnType<typeof setTimeout> | null = null;
-  /** Arranque gradual (ver {@link Pacer}): solo cuando la ruta va por el relevo. */
+  /** Ventana de envío según la latencia (ver {@link SendWindow}): solo cuando la ruta va por el relevo. */
   private paced = false;
 
   constructor(
@@ -78,6 +98,7 @@ export class TransferManager {
     }
     this.inAsm.clear();
     this.flushDrain();
+    this.flushAcks();
     this.emit(true);
   }
 
@@ -98,7 +119,7 @@ export class TransferManager {
   sendFile(file: File): void {
     const id = this.takeId();
     const name = sanitizeFilename(file.name);
-    this.outFiles.set(id, { file, accepted: false });
+    this.outFiles.set(id, { file, accepted: false, acked: 0, win: null });
     this.put({ key: `out:${id}`, id, dir: 'out', kind: 'file', name, mime: file.type, size: file.size, transferred: 0, status: 'pending', preview: file });
     this.sendCtl({ t: 'file-offer', id, name: file.name, size: file.size, mime: file.type || 'application/octet-stream' });
   }
@@ -145,7 +166,7 @@ export class TransferManager {
           this.put({ ...base, status: 'error', note: 'Rechazado: supera 500 MB' });
           return;
         }
-        this.inAsm.set(c.id, { asm: new FileAssembler(c.size), mime: c.mime });
+        this.inAsm.set(c.id, { asm: new FileAssembler(c.size), mime: c.mime, ackedAt: 0, ackTimer: null });
         this.put({ ...base, status: 'active' });
         this.sendCtl({ t: 'file-accept', id: c.id });
         break;
@@ -169,6 +190,19 @@ export class TransferManager {
         if (inn && (inn.status === 'active' || inn.status === 'pending')) this.finishItem(inn, 'cancelled', msg);
         break;
       }
+      case 'file-ack': {
+        const o = this.outFiles.get(c.id);
+        const it = this.items.get(`out:${c.id}`);
+        if (!o || !it || c.bytes <= o.acked) return;
+        o.acked = Math.min(c.bytes, o.file.size);
+        o.win?.onAck(o.acked);
+        if (it.status === 'active') {
+          it.transferred = o.acked;
+          this.emit();
+        }
+        this.flushAcks();
+        break;
+      }
       case 'file-done': {
         const it = this.items.get(`in:${c.id}`);
         const st = this.inAsm.get(c.id);
@@ -176,6 +210,7 @@ export class TransferManager {
         try {
           it.blob = st.asm.finish(st.mime);
           it.transferred = it.size;
+          this.sendCtl({ t: 'file-ack', id: c.id, bytes: it.size });
           this.finishItem(it, 'done');
         } catch {
           this.finishItem(it, 'error', 'Transferencia incompleta');
@@ -199,11 +234,25 @@ export class TransferManager {
     try {
       st.asm.addChunk(f.chunkIndex, f.payload);
       it.transferred = st.asm.received;
+      this.ack(f.fileId, st, it);
       this.emit();
     } catch {
       this.sendCtl({ t: 'file-cancel', id: f.fileId, reason: 'error' });
       this.finishItem(it, 'error', 'Datos inválidos');
     }
+  }
+
+  /** Confirma lo recibido, a lo más una vez cada ACK_MIN_GAP_MS; si es antes, al cumplirse ese tiempo. */
+  private ack(id: number, st: InFile, it: TransferItem): void {
+    if (st.ackTimer) return;
+    const send = () => {
+      st.ackTimer = null;
+      st.ackedAt = performance.now();
+      if (it.status === 'active') this.sendCtl({ t: 'file-ack', id, bytes: it.transferred });
+    };
+    const wait = st.ackedAt + ACK_MIN_GAP_MS - performance.now();
+    if (wait <= 0) send();
+    else st.ackTimer = setTimeout(send, wait);
   }
 
   // ---- Envío de datos ----
@@ -213,38 +262,72 @@ export class TransferManager {
     const it = this.items.get(`out:${id}`);
     if (!o || !it) return;
     let index = 0;
-    const pacer = this.paced ? new Pacer() : null;
-    const high = pacer ? PACED_HIGH_WATER : HIGH_WATER;
+    o.win = this.paced ? new SendWindow() : null;
+    const live = () => !this.closed && it.status === 'active';
     for (let off = 0; off < o.file.size; off += READ_SLICE) {
-      if (this.closed || it.status !== 'active') return;
+      if (!live()) return;
       const slice = new Uint8Array(await o.file.slice(off, off + READ_SLICE).arrayBuffer());
       for (const frame of splitIntoFrames(id, slice, index)) {
-        while (this.ch.bufferedAmount > high) {
+        while (this.ch.bufferedAmount > HIGH_WATER) {
           await new Promise<void>((r) => this.drainWaiters.push(r));
           if (this.closed) return;
         }
-        if (pacer) await this.pace(pacer, frame.byteLength);
-        if (this.closed) return;
-        if (it.status !== 'active') return;
+        while (o.win && !o.win.canSend() && live()) {
+          if (await this.waitAck(ACK_TIMEOUT_MS)) continue;
+          // Sin confirmaciones a tiempo se manda un trozo igual; si nunca llegó ninguna, el otro lado es una
+          // versión que no confirma y se sigue sin ventana.
+          if (o.acked === 0) o.win = null;
+          break;
+        }
+        // La ventana cuenta bytes del archivo, que es lo que confirma el receptor.
+        const bytes = frame.byteLength - HEADER_BYTES;
+        await this.paceFor(o, bytes);
+        if (!live()) return;
         this.ch.send(frame);
+        o.win?.onSend(bytes);
         index++;
       }
-      it.transferred = Math.min(off + READ_SLICE, o.file.size);
+      // Si el receptor confirma, la barra muestra lo que ya llegó; si no, lo que se entregó al canal.
+      if (o.acked === 0) it.transferred = Math.min(off + READ_SLICE, o.file.size);
       this.emit();
     }
     if (index !== chunkCount(o.file.size)) return;
-    if (it.status !== 'active') return;
+    if (!live()) return;
     this.sendCtl({ t: 'file-done', id });
+    const deadline = performance.now() + FINAL_ACK_TIMEOUT_MS;
+    while (o.acked > 0 && o.acked < o.file.size && live() && performance.now() < deadline) await this.waitAck(deadline - performance.now());
+    if (!live()) return;
     it.transferred = it.size;
     this.finishItem(it, 'done');
   }
 
-  private async pace(p: Pacer, bytes: number): Promise<void> {
+  /** Reparte el envío a lo largo del RTT. Con la pestaña oculta los temporizadores se frenan: ahí basta la ventana. */
+  private async paceFor(o: OutFile, bytes: number): Promise<void> {
     let ms: number;
-    // Con la pestaña oculta los temporizadores se frenan a uno por segundo o menos: ahí no se dosifica.
-    while ((ms = p.wait(bytes, this.ch.bufferedAmount)) > 0 && !this.closed && !isHidden()) {
+    while (o.win && (ms = o.win.delay(bytes)) > 0 && !this.closed && !isHidden()) {
       await new Promise<void>((r) => setTimeout(r, ms));
     }
+  }
+
+  /** Espera la próxima confirmación (true) o que pasen `ms` (false). */
+  private waitAck(ms: number): Promise<boolean> {
+    return new Promise((resolve) => {
+      const t = setTimeout(() => {
+        this.ackWaiters = this.ackWaiters.filter((w) => w !== wake);
+        resolve(false);
+      }, ms);
+      const wake = () => {
+        clearTimeout(t);
+        resolve(true);
+      };
+      this.ackWaiters.push(wake);
+    });
+  }
+
+  private flushAcks(): void {
+    const w = this.ackWaiters;
+    this.ackWaiters = [];
+    for (const r of w) r();
   }
 
   private flushDrain(): void {
@@ -268,6 +351,7 @@ export class TransferManager {
     if (note) it.note = note;
     if (it.dir === 'in') this.inAsm.delete(it.id);
     else this.outFiles.delete(it.id);
+    this.flushAcks();
     this.emit(true);
   }
 

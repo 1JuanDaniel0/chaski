@@ -5,6 +5,8 @@ export type Control =
   | { t: 'file-accept'; id: number }
   | { t: 'file-cancel'; id: number; reason: CancelReason }
   | { t: 'file-done'; id: number }
+  /** El receptor confirma cuántos bytes del archivo tiene (para la ventana de envío y la barra del emisor). */
+  | { t: 'file-ack'; id: number; bytes: number }
   | { t: 'text'; id: number; text: string }
   /** "Terminar": el otro debe borrar el chat. */
   | { t: 'end' };
@@ -36,6 +38,9 @@ export function parseControl(raw: string): Control | null {
       return { t: 'file-accept', id: o.id };
     case 'file-done':
       return { t: 'file-done', id: o.id };
+    case 'file-ack':
+      if (typeof o.bytes !== 'number' || !Number.isSafeInteger(o.bytes) || o.bytes < 0) return null;
+      return { t: 'file-ack', id: o.id, bytes: o.bytes };
     case 'file-cancel': {
       const r = o.reason === 'too-large' || o.reason === 'error' ? o.reason : 'user';
       return { t: 'file-cancel', id: o.id, reason: r };

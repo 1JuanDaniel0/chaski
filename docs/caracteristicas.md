@@ -20,8 +20,8 @@ Chaski pasa archivos y texto entre tu celular y una PC escaneando un QR. Está p
 - **Arrastrar y soltar** archivos en la PC, o pegarlos con Ctrl+V.
 - **Botón "Pegar" en el celular**: una imagen copiada se envía y el texto queda listo para revisarlo.
 - **"Compartir con Chaski" en Android**: desde la galería o cualquier app.
-- **Progreso con velocidad y tiempo restante**, y botón para cancelar. En los primeros 2 minutos, si el cálculo da más de 10 min, dice "tomando velocidad…" en vez de un tiempo que todavía no es real.
-- **Muestra por dónde va la conexión** junto a "Conectado con…": "Conexión directa" o "Por relevo: puede ir más lento".
+- **Progreso con velocidad y tiempo restante**, contando lo que ya llegó al otro dispositivo (no solo lo que salió), y botón para cancelar. En los primeros 2 minutos, si el cálculo da más de 10 min, dice "tomando velocidad…" en vez de un tiempo que todavía no es real.
+- **Muestra por dónde va la conexión** junto a "Conectado con…": "Conexión directa" o "Por relevo: puede ir más lento. En el mismo wifi va directo". Lo segundo pasa sobre todo con el celular en datos móviles, porque la red del operador no deja entrar conexiones directas.
 - **La pantalla del celular no se apaga** mientras haya un envío en curso. Si se apagara, el envío se cortaría.
 - **Aviso al cerrar la pestaña** si algo está a medio enviar.
 - **Modo claro u oscuro:** sigue al sistema por defecto, y el botón del encabezado lo fija a mano en claro u oscuro.
