@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { FileAssembler } from './assembler';
 import { CHUNK_SIZE, chunkCount, decodeFrame, encodeFrame, splitIntoFrames } from './framing';
 import { TransferManager, type ChannelLike, type TransferItem } from './manager';
-import { PACE_GROW_BELOW, PACE_START, PACE_STEP_MS, Pacer } from './pacer';
+import { ACK_MIN_GAP_MS, SendWindow } from './pacer';
 import { parseControl } from './protocol';
 import { routeFromStats } from './route';
 import { sdpFingerprints } from './peer';
@@ -76,6 +76,8 @@ describe('control', () => {
     expect(parseControl('no json')).toBeNull();
     expect(parseControl('{"t":"file-offer","id":1,"name":"a","size":-5,"mime":""}')).toBeNull();
     expect(parseControl('{"t":"end"}')).toEqual({ t: 'end' });
+    expect(parseControl('{"t":"file-ack","id":1,"bytes":65536}')).toEqual({ t: 'file-ack', id: 1, bytes: 65536 });
+    expect(parseControl('{"t":"file-ack","id":1,"bytes":-1}')).toBeNull();
   });
 });
 
@@ -161,60 +163,128 @@ describe('TransferManager', () => {
   });
 });
 
-describe('arranque gradual', () => {
-  /** Envía trozos de 16 KiB durante `ms` con un reloj falso; devuelve los bytes que dejó pasar. */
-  function run(p: Pacer, clock: { t: number }, ms: number, buffered = 0): number {
-    const end = clock.t + ms;
+describe('ventana de envío por relevo', () => {
+  /**
+   * Simula un camino con un cuello de botella de `rate` B/s y una cola de `queue` bytes (lo que no cabe se
+   * descarta, como el socket de la PC del trabajo), `rtt` ms de ida y vuelta, y un receptor que confirma como el
+   * real (con cada trozo, a lo más cada ACK_MIN_GAP_MS). Devuelve bytes entregados y descartados en `secs` segundos.
+   */
+  function simulate(rate: number, rttOf: number | ((t: number) => number), queue: number, secs: number) {
+    const clock = { t: 0 };
+    const w = new SendWindow(() => clock.t);
+    const rtt = () => (typeof rttOf === 'number' ? rttOf : rttOf(clock.t));
+    const late: number[] = []; // entregado por segundo
+    // Eventos: llegada de datos al receptor, salida de una confirmación (con el mismo espaciado que el real) y
+    // llegada de la confirmación al emisor, rtt/2 después.
+    type Ev = { at: number; kind: 'in' | 'ackOut' | 'ackIn' | 'wake'; bytes: number };
+    const events: Ev[] = [];
+    const push = (e: Ev) => {
+      events.push(e);
+      events.sort((a, b) => a.at - b.at);
+    };
+    let free = 0; // cuándo queda libre el cuello de botella
     let sent = 0;
-    while (clock.t < end) {
-      const w = p.wait(CHUNK_SIZE, buffered);
-      if (w === 0) sent += CHUNK_SIZE;
-      else clock.t += w;
+    let delivered = 0;
+    let acked = 0;
+    let dropped = 0;
+    let lastAck = -Infinity;
+    let pending = false;
+    let waking = false;
+    while (clock.t < secs * 1000) {
+      while (!waking && w.canSend()) {
+        const d = w.delay(CHUNK_SIZE);
+        if (d > 0) {
+          waking = true;
+          push({ at: clock.t + d, kind: 'wake', bytes: 0 });
+          break;
+        }
+        const queued = Math.max(0, free - clock.t) * (rate / 1000);
+        if (queued + CHUNK_SIZE > queue) dropped++;
+        free = Math.max(free, clock.t) + (CHUNK_SIZE / rate) * 1000;
+        sent += CHUNK_SIZE;
+        w.onSend(CHUNK_SIZE);
+        push({ at: free + rtt() / 2, kind: 'in', bytes: sent });
+      }
+      const e = events.shift()!;
+      clock.t = e.at;
+      if (e.kind === 'wake') {
+        waking = false;
+      } else if (e.kind === 'in') {
+        delivered = e.bytes;
+        late[Math.floor(clock.t / 1000)] = delivered;
+        if (!pending) {
+          pending = true;
+          push({ at: Math.max(clock.t, lastAck + ACK_MIN_GAP_MS), kind: 'ackOut', bytes: 0 });
+        }
+      } else if (e.kind === 'ackOut') {
+        pending = false;
+        lastAck = clock.t;
+        push({ at: clock.t + rtt() / 2, kind: 'ackIn', bytes: delivered });
+      } else if (e.bytes > acked) {
+        acked = e.bytes;
+        w.onAck(acked);
+      }
     }
-    return sent;
+    return { delivered, dropped, late };
   }
 
-  it('empieza en PACE_START y se duplica cada paso si la cola está vacía', () => {
-    const clock = { t: 0 };
-    const p = new Pacer(() => clock.t);
-    const first = run(p, clock, PACE_STEP_MS);
-    expect(first).toBeGreaterThan(PACE_START * 0.4);
-    expect(first).toBeLessThan(PACE_START * 0.6);
-    // Se duplica al cumplirse cada paso: a los 500, 1000 y 1500 ms.
-    run(p, clock, PACE_STEP_MS * 3);
-    expect(p.bytesPerSecond).toBe(PACE_START * 8);
+  it('llena el camino de la PC del trabajo sin desbordar su cola', () => {
+    // Lo medido en producción: ~1,7 MB/s, 170 ms y ~250 kB de cola antes de descartar.
+    const r = simulate(1.7e6, 170, 250_000, 30);
+    expect(r.dropped).toBe(0);
+    expect(r.delivered).toBeGreaterThan(1.7e6 * 30 * 0.85);
   });
 
-  it('no acelera mientras el canal tenga cola', () => {
-    const clock = { t: 0 };
-    const p = new Pacer(() => clock.t);
-    run(p, clock, PACE_STEP_MS * 4, PACE_GROW_BELOW);
-    expect(p.bytesPerSecond).toBe(PACE_START);
+  it('se adapta a un camino lento', () => {
+    const r = simulate(300_000, 120, 150_000, 30);
+    expect(r.dropped).toBe(0);
+    expect(r.delivered).toBeGreaterThan(300_000 * 30 * 0.85);
   });
 
-  it('tras una pausa no suelta una ráfaga', () => {
-    const clock = { t: 0 };
-    const p = new Pacer(() => clock.t);
-    clock.t += 10_000;
-    let burst = 0;
-    while (p.wait(CHUNK_SIZE, PACE_GROW_BELOW) === 0) burst += CHUNK_SIZE;
-    expect(burst).toBeLessThanOrEqual(Math.max(CHUNK_SIZE, PACE_START * 0.05) + CHUNK_SIZE);
+  it('arranca rápido en un camino ancho', () => {
+    const r = simulate(10e6, 170, 2_000_000, 5);
+    expect(r.dropped).toBe(0);
+    expect(r.delivered).toBeGreaterThan(10e6 * 5 * 0.5);
   });
 
-  it('el envío dosificado llega completo', async () => {
+  it('se recupera si la ruta cambia a una más lejana (de wifi a datos)', () => {
+    const r = simulate(1.7e6, (t) => (t < 10_000 ? 60 : 250), 400_000, 40);
+    const last10 = r.late[39]! - r.late[29]!;
+    expect(last10).toBeGreaterThan(1.7e6 * 10 * 0.8);
+  });
+
+  it('el envío por relevo llega completo y el emisor ve lo confirmado', async () => {
     const [ca, cb, setA, setB] = pair();
+    let ia: TransferItem[] = [];
     let ib: TransferItem[] = [];
-    const A = new TransferManager(ca, () => undefined, true);
+    const A = new TransferManager(ca, (i) => (ia = i), true);
     const B = new TransferManager(cb, (i) => (ib = i), false);
     setA((m) => A.onMessage(m));
     setB((m) => B.onMessage(m));
     A.setPaced(true);
-    const data = new Uint8Array(randomBytes(CHUNK_SIZE * 12));
+    const data = new Uint8Array(randomBytes(CHUNK_SIZE * 40 + 7));
     A.sendFile(new File([data], 'a.bin'));
-    await new Promise((r) => setTimeout(r, 1500));
+    await new Promise((r) => setTimeout(r, 300));
     const f = ib.find((i) => i.kind === 'file')!;
     expect(f.status).toBe('done');
     expect(Buffer.from(await f.blob!.arrayBuffer()).equals(Buffer.from(data))).toBe(true);
+    expect(ia[0]!.status).toBe('done');
+  });
+
+  it('con un receptor que no confirma (versión vieja) igual termina', async () => {
+    const [ca, cb, setA, setB] = pair();
+    let ib: TransferItem[] = [];
+    const A = new TransferManager(ca, () => undefined, true);
+    const B = new TransferManager(cb, (i) => (ib = i), false);
+    setA((m) => {
+      if (typeof m === 'string' && m.includes('"file-ack"')) return;
+      A.onMessage(m);
+    });
+    setB((m) => B.onMessage(m));
+    A.setPaced(true);
+    A.sendFile(new File([new Uint8Array(CHUNK_SIZE * 40)], 'a.bin'));
+    await new Promise((r) => setTimeout(r, 2600));
+    expect(ib.find((i) => i.kind === 'file')!.status).toBe('done');
   });
 });
 
