@@ -53,7 +53,7 @@ flowchart LR
     end
     CFP["Cloudflare Pages<br/>app.chaski.me"]
     CFX["Proxy de Cloudflare<br/>signal.chaski.me"]
-    subgraph VM["VM en AWS (temporal)"]
+    subgraph VM["VM en Oracle Cloud (Santiago)"]
         SIG["Señalización<br/>Spring Boot :8443"]
         TURN["coturn<br/>3478 / 443"]
     end
@@ -78,7 +78,7 @@ La línea gruesa es el camino normal de los datos. Las punteadas solo se usan cu
 | Transporte | WebRTC (`RTCDataChannel`) |
 | Señalización | Spring Boot 3, Java 21, WebSocket, Maven |
 | Relevo | coturn (TURN REST API, credenciales temporales) |
-| Hosting | Cloudflare Pages + VM en AWS, temporal mientras dure el crédito (Docker Compose). Destino a largo plazo: Oracle Cloud Always Free ([ADR 0005](docs/adr/0005-oracle-cloudflare-hosting.md)) |
+| Hosting | Cloudflare Pages + VM Ampere A1 de Oracle Cloud Always Free en Santiago (Docker Compose), ver [ADR 0005](docs/adr/0005-oracle-cloudflare-hosting.md) |
 | CI/CD | GitHub Actions, GHCR, Dependabot, CodeQL |
 
 ## Desarrollo local
