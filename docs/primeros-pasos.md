@@ -15,7 +15,7 @@ Checklist en orden. Reemplaza `chaski.me` por tu dominio real en: `infra/docker-
 
 ## 3. Cuenta de Oracle y VM
 
-> **Hoy la VM está en AWS**, de forma temporal (ver [ADR 0005](adr/0005-oracle-cloudflare-hosting.md)). En AWS los pasos equivalen: instancia EC2 con Ubuntu, Elastic IP en vez de IP reservada y Security Group con los mismos puertos de la tabla. `provision-vm.sh` instala Docker y agrega sus reglas igual, pero el Ubuntu de AWS acepta todo por defecto en iptables, así que **quien limita el 8443 a los rangos de Cloudflare es el Security Group**: no lo abras a 0.0.0.0/0. Para la IP privada de `TURN_EXTERNAL_IP` usa la de `ip a` en la instancia. Para pasar de AWS a Oracle sigue la [sección 11](#11-mudanza-de-aws-a-oracle).
+> **Producción corre en Oracle Cloud (Santiago) desde el 2026-10-15** (ver [ADR 0005](adr/0005-oracle-cloudflare-hosting.md)). Esta sección sirve para recrear la VM. Si alguna vez hay que usar AWS, los pasos equivalen: instancia EC2 con Ubuntu, Elastic IP en vez de IP reservada y Security Group con los mismos puertos de la tabla.
 
 **Límites Always Free que importan** (según la página *Recursos Siempre gratis* de Oracle en octubre de 2026; en la consola están en *Gobernanza y administración, Límites, cuotas y uso*):
 
@@ -48,7 +48,17 @@ Pasos:
 | 49160-49360 | UDP | 0.0.0.0/0 |
 | 8443 | TCP | Rangos de Cloudflare (https://www.cloudflare.com/ips-v4), una regla por rango |
 
-- [ ] Entra por SSH (`ubuntu@<IP>`), clona el repo en `~/chasqui` y ejecuta `sudo infra/scripts/provision-vm.sh`. Instala Docker y abre el firewall del sistema operativo: en Oracle, **el Ubuntu trae iptables con un REJECT por defecto**, así que sin este script nada llega aunque la Security List esté bien. El 8443 queda abierto solo a Cloudflare en los dos firewalls.
+- [ ] Entra por SSH (`ubuntu@<IP>`) y clona el repo en `~/chasqui`. El repo es privado y el `git clone` por HTTPS no funciona sin token, así que usa una **deploy key** de solo lectura:
+  1. En la VM: `ssh-keygen -t ed25519 -f ~/.ssh/github_deploy -N ""` y `cat ~/.ssh/github_deploy.pub`.
+  2. En GitHub, *Settings, Deploy keys, Add deploy key*, pega la llave pública y deja **sin** marcar "Allow write access".
+  3. En la VM, agrega a `~/.ssh/config`:
+     ```
+     Host github.com
+       IdentityFile ~/.ssh/github_deploy
+       IdentitiesOnly yes
+     ```
+  4. `git clone git@github.com:1JuanDaniel0/chasqui.git ~/chasqui`. Así `git pull` y `deploy.sh` funcionan sin contraseña.
+- [ ] Ejecuta `sudo infra/scripts/provision-vm.sh`. Instala Docker y abre el firewall del sistema operativo: en Oracle, **el Ubuntu trae iptables con un REJECT por defecto**, así que sin este script nada llega a coturn aunque la Security List esté bien. Ojo: Docker publica el 8443 con NAT y ese tráfico no pasa por la cadena `INPUT`, así que **quien deja el 8443 solo para Cloudflare es la Security List**; no lo abras ahí a 0.0.0.0/0. Para ver si llegan conexiones al 8443, mira la cadena de Docker: `sudo iptables -L DOCKER -n -v -x | grep dpt:8443`.
 - [ ] Anota la IP pública y la privada (`ip a`, suele ser `10.0.0.x`) para `TURN_EXTERNAL_IP`.
 
 ## 4. DNS en Cloudflare
@@ -72,7 +82,7 @@ Pasos:
 ## 5. Certificado de origen para la señalización (8443)
 
 - [ ] En Cloudflare: SSL/TLS, Origin Server, "Create Certificate" para `signal.<dominio>` (o `*.<dominio>`). Descarga el `.pem` y la llave.
-- [ ] En la VM, guárdalos como `~/chasqui/infra/certs/origin/origin.pem` y `origin.key` (`chmod 600 origin.key`).
+- [ ] En la VM, guárdalos como `~/chasqui/infra/certs/origin/origin.pem` y `origin.key`. El contenedor de la señalización corre con el usuario 10001, así que la llave tiene que ser suya: `sudo chown 10001:10001 infra/certs/origin/origin.key && sudo chmod 400 infra/certs/origin/origin.key`. Si no, la señalización se reinicia en bucle con `AccessDeniedException: /certs/origin/origin.key`.
 - [ ] Confirma que `apps/signal` lee el certificado como indica `infra/docker-compose.yml` (propiedades `SERVER_SSL_*`).
 
 ## 6. Certificado Let's Encrypt para TURN
@@ -124,6 +134,7 @@ Si el par elegido es `srflx`, la conexión fue directa y TURN no se usó; es lo 
 | Fecha | Red PC | Red celular | Señalización | TURN udp / tcp / tls | Ruta elegida | Notas |
 |-------|--------|-------------|--------------|----------------------|--------------|-------|
 | 2026-10-07 | PC Windows (wifi) | Android, Chrome, datos móviles 5G | OK (script de humo) | OK / OK / OK en ambas redes, relay 54.207.232.193 | Directa: `prflx` (PC) ↔ `srflx` (celular), UDP, RTT 36-230 ms | Foto y archivo en ambos sentidos OK. TURN no hizo falta en la app. El ICE pasó a `disconnected` y volvió a `connected` dos veces sin cortar la transferencia. Un aviso 701 en Trickle ICE de la PC no impidió los relay |
+| 2026-10-15 | PC Windows | Android, Chrome, datos móviles | OK (script de humo), ya en Oracle | relay OK en 3478 UDP/TCP y TURNS 443, IP de la VM de Oracle | Sin verificar (archivos pequeños) | Primera prueba tras la mudanza a Oracle. 65 KB y 43 KB en ambos sentidos OK. Con archivos tan pequeños lo normal es la ruta directa, así que no prueba el relevo en la app |
 
 ## 8. Secretos y entorno de GitHub
 
@@ -153,6 +164,8 @@ Settings, Branches (o Rulesets), regla para `main`:
 - [ ] **Métricas de un lanzamiento.** La web no lleva analítica ni scripts de terceros, así que cada canal (Reddit, Show HN…) se mide publicando en días distintos y comparando el día. A medianoche (hora de Lima) la señalización escribe una línea con lo de ese día: salas creadas y emparejadas, reconexiones y cuántas conexiones fueron directas (`host`, `srflx`) o por el relevo (`relay`). En la VM: `docker compose logs signal | grep "resumen diario"`. Los logs se pierden al redesplegar, así que anota los números antes de un `deploy.sh`. Para las visitas de buscadores, Search Console.
 
 ## 11. Mudanza de AWS a Oracle
+
+> Hecha el 2026-10-15 (DNS apuntando a Oracle desde ese día). Queda la [sección 11.5](#115-apagar-aws).
 
 La idea es montar la VM de Oracle **al lado** de la de AWS, probarla sin tocar a los usuarios y recién después cambiar el DNS. Como las dos usan el mismo `TURN_SECRET`, las credenciales que da cualquiera de las dos señalizaciones sirven en los dos coturn, así que durante el cambio nadie se queda sin relevo. El frontend (Cloudflare Pages) no se mueve.
 
@@ -185,7 +198,7 @@ set block-storage quota total-storage-gb to 60 in compartment chaski
 - [ ] Haz la [sección 3](#3-cuenta-de-oracle-y-vm) completa en Oracle.
 - [ ] Copia de la VM de AWS a la de Oracle, sin cambiar nada en AWS (por ejemplo con `scp` pasando por tu PC):
   - `~/chasqui/infra/.env`: copia `TURN_SECRET` y `SIGNAL_TAG` tal cual, cambia `TURN_EXTERNAL_IP` por `IPpúblicaOracle/IPprivadaOracle` y sube `TURN_MONTHLY_GB` a **5000**. Son 5 TB, la mitad de los 10 TB gratis de salida, que se comparten con las otras VM de la cuenta. El contador empieza de cero en la VM nueva.
-  - `~/chasqui/infra/certs/origin/origin.pem` y `origin.key` (`chmod 600 origin.key`). También puedes crear otro certificado de origen en Cloudflare ([sección 5](#5-certificado-de-origen-para-la-señalización-8443)).
+  - `~/chasqui/infra/certs/origin/origin.pem` y `origin.key` (con el dueño y los permisos que pide la [sección 5](#5-certificado-de-origen-para-la-señalización-8443)), o crea otro certificado de origen en Cloudflare.
   - `/etc/letsencrypt/cloudflare.ini` (`chmod 600`).
 - [ ] Certificado de TURN: `sudo infra/scripts/renew-turn-cert.sh`. Usa el desafío DNS, así que funciona aunque `turn.` todavía apunte a AWS.
 - [ ] Programa la renovación: `sudo crontab -e` y agrega `0 4 * * 1 /home/ubuntu/chasqui/infra/scripts/renew-turn-cert.sh`.
@@ -206,6 +219,7 @@ set block-storage quota total-storage-gb to 60 in compartment chaski
 - [ ] En GitHub (*Settings, Secrets and variables, Actions*), cambia `VM_HOST` por la IP de Oracle y agrega la llave pública de `VM_SSH_KEY` a `~/.ssh/authorized_keys` de la VM de Oracle. `VM_USER` sigue siendo `ubuntu`.
 - [ ] Haz la [prueba de punta a punta](#prueba-de-punta-a-punta) completa (script de humo, Trickle ICE con `turns:turn.chaski.me:443` y una transferencia real por datos móviles) y anótala en la tabla.
 - [ ] Las salas que estaban abiertas en AWS se reconectan solas a la señalización nueva, y los relevos que ya estaban en curso siguen por el coturn de AWS hasta terminar. Por eso AWS se queda encendido un par de días.
+- [ ] Cuando lleve un par de días estable, devuelve el TTL de `turn` a *Auto*.
 
 Para volver atrás: pon otra vez la IP de AWS en los dos registros y en `VM_HOST`.
 
@@ -219,5 +233,6 @@ Espera 2 días con Oracle funcionando y sin quejas.
 - [ ] **Elastic IP: Disassociate y luego Release.** Una IP elástica sin instancia se cobra por hora.
 - [ ] En *Volumes* y *Snapshots*, borra lo que haya quedado de Chaski (el disco raíz se borra solo al terminar la instancia si tenía *Delete on termination*).
 - [ ] Borra el Security Group de Chaski (no cuesta, es por orden).
+- [ ] En GitHub, *Settings, Deploy keys*: borra la llave de la VM de AWS.
+- [ ] Borra las copias temporales de llaves y secretos que se usaron para pasar archivos entre las VM y tu PC.
 - [ ] Deja el AWS Budget `chasqui-consumo-mensual` hasta que la factura del mes siguiente salga en 0 USD. Si sale algo, *Cost Explorer* agrupado por servicio dice qué quedó vivo.
-- [ ] Actualiza el [ADR 0005](adr/0005-oracle-cloudflare-hosting.md) (quitar la excepción de AWS) y el comentario de `infra/docker-compose.yml`.
