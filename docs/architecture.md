@@ -7,7 +7,7 @@ Cuatro piezas: la web estática, la señalización, el relevo TURN y los dos nav
 | Componente | Dónde corre | Qué hace |
 |------------|-------------|----------|
 | Web (PWA) | Cloudflare Pages | Sirve el cliente estático, genera el secreto y el QR, cifra y transfiere |
-| Señalización | VM en AWS (temporal, ver [ADR 0005](adr/0005-oracle-cloudflare-hosting.md)), contenedor Spring Boot | Enruta mensajes cifrados entre los dos dispositivos de una sala y entrega credenciales TURN |
+| Señalización | VM de Oracle Cloud en Santiago (ver [ADR 0005](adr/0005-oracle-cloudflare-hosting.md)), contenedor Spring Boot | Enruta mensajes cifrados entre los dos dispositivos de una sala y entrega credenciales TURN |
 | coturn | La misma VM, red del host | Relevo de tráfico cuando no hay ruta directa (también STUN) |
 | Navegadores | PC y celular | Establecen el `RTCDataChannel` cifrado con DTLS |
 
