@@ -1,5 +1,5 @@
-# Producción: hoy una VM en AWS (temporal); el destino previsto es Oracle Cloud
-# Always Free (ARM). La imagen se publica para linux/arm64 y linux/amd64.
+# Producción: VM Ampere A1 (ARM) de Oracle Cloud en Santiago, desde el 2026-10-15 (ADR 0005).
+# La imagen se publica para linux/arm64 y linux/amd64.
 # Uso: copia .env.example a .env, rellénalo y ejecuta scripts/deploy.sh
 name: chasqui
 
@@ -7,7 +7,7 @@ services:
   signal:
     image: ghcr.io/1juandaniel0/chasqui-signal:${SIGNAL_TAG:?define SIGNAL_TAG en .env o en el entorno}
     ports:
-      - "8443:8443"            # solo accesible desde rangos de Cloudflare (firewall del SO)
+      - "8443:8443"            # solo rangos de Cloudflare: lo filtra la Security List (Docker publica con NAT y se salta INPUT)
       - "127.0.0.1:9090:9090"  # Actuator/métricas: solo localhost
     environment:
       TURN_SECRET: ${TURN_SECRET:?define TURN_SECRET}

@@ -44,4 +44,4 @@ Un límite en la web no frena a un bot: no usa nuestra web, solo necesita entrar
 ## Consecuencias
 - Las transferencias por relevo van al ritmo de la red más lenta del camino, ya no a un máximo artificial.
 - No hay tope de velocidad en el relevo, pero sí de gasto: al pasar `TURN_MONTHLY_GB` en el mes, coturn se apaga hasta el mes siguiente y las conexiones que necesitan relevo dejan de conectarse.
-- Cada GB que pasa por el relevo cuesta unos 0,09 USD de salida en AWS. Las conexiones directas no cuestan nada.
+- Cada GB que pasaba por el relevo costaba unos 0,09 USD de salida en AWS. Desde el 2026-10-15 la VM está en Oracle, con 10 TB de salida gratis al mes, y `TURN_MONTHLY_GB` subió a 5000. Las conexiones directas no cuestan nada.
