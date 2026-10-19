@@ -9,7 +9,7 @@ Pasa archivos y texto entre dos dispositivos escaneando un QR. Sin cuentas, sin 
 
 **Demo:** https://chaski.me
 
-> **In English:** Chaski moves files and text between two devices by scanning a QR code. No accounts, nothing to install, nothing stored on a server. Data goes browser to browser over WebRTC, end-to-end encrypted; the server only helps the two devices find each other and cannot read what passes. Stack: React + TypeScript (PWA), Spring Boot 3 / Java 21 signaling, coturn, Docker on Oracle Cloud, Cloudflare Pages. The docs are in Spanish.
+> **In English:** Chaski moves files and text between two devices by scanning a QR code. No accounts, nothing to install, nothing stored on a server. Data goes browser to browser over WebRTC, end-to-end encrypted; the server only helps the two devices find each other and cannot read what passes. Stack: React + TypeScript (PWA), Spring Boot 3 / Java 21 signaling, coturn, Docker on Oracle Cloud, Cloudflare Pages. Built with the help of Claude Code. The docs are in Spanish.
 
 ![La PC muestra el QR, el celular lo escanea y le pasa una foto y un texto](docs/assets/demo.gif)
 
@@ -114,6 +114,8 @@ Abre `http://localhost:5173` en dos pestañas y ya puedes transferir.
 
 Si usas un túnel, agrega su origen a `ALLOWED_ORIGINS` de la señalización.
 
+**Montar una instancia propia** (VM, Cloudflare, certificados, despliegue automático): [docs/despliegue.md](docs/despliegue.md).
+
 ## Estructura del repositorio
 
 ```
@@ -126,7 +128,7 @@ chasqui/
 │   ├── protocol.md       # Contrato cliente <-> servidor
 │   ├── architecture.md
 │   ├── threat-model.md
-│   ├── primeros-pasos.md # Checklist de configuración inicial
+│   ├── despliegue.md     # Cómo montar una instancia propia
 │   └── adr/              # Decisiones de arquitectura
 ├── .github/        # Workflows de CI, Dependabot, plantilla de PR
 ├── SECURITY.md
@@ -155,6 +157,8 @@ Usa ramas por funcionalidad, PRs y Conventional Commits. Para reportar vulnerabi
 ## Autor
 
 Juan Daniel Ulloa Vega ([@1JuanDaniel0](https://github.com/1JuanDaniel0)), estudiante de Ingeniería de las Telecomunicaciones.
+
+Hecho con ayuda de [Claude Code](https://claude.com/claude-code). Yo definí el producto y los requisitos, decidí la arquitectura y los compromisos de cada [ADR](docs/adr/), monté y opero la infraestructura, y probé cada cambio en producción. Gran parte del código se escribió con Claude Code y lo revisé en pull requests (los commits llevan `Co-Authored-By: Claude`).
 
 ## Licencia
 

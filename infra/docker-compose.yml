@@ -16,7 +16,7 @@ services:
       MANAGEMENT_SERVER_PORT: "9090"
       # Actuator solo escucha en localhost: HTTP simple, sin heredar el TLS de 8443.
       MANAGEMENT_SERVER_SSL_ENABLED: "false"
-      # TLS de origen con el certificado de origen de Cloudflare (ver docs/primeros-pasos.md).
+      # TLS de origen con el certificado de origen de Cloudflare (ver docs/despliegue.md).
       # Ajusta estas propiedades si apps/signal usa otros nombres.
       SERVER_SSL_ENABLED: "true"
       SERVER_SSL_CERTIFICATE: /certs/origin/origin.pem

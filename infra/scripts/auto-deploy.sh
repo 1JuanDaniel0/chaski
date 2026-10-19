@@ -18,13 +18,11 @@ flock -n 9 || exit 0
 
 cd "$REPO_DIR"
 git fetch -q origin main
-[[ "$(git rev-parse HEAD)" == "$(git rev-parse origin/main)" ]] && exit 0
-
 TAG="$(git log -1 --first-parent --format=%H origin/main -- "${IMAGE_PATHS[@]}")"
 CURRENT="$(sed -n 's/^SIGNAL_TAG=//p' "$INFRA_DIR/.env")"
 
 if [[ "$TAG" == "$CURRENT" ]]; then
-  # Solo cambiaron cosas que no van en la VM (web, docs): basta con avanzar el repo.
+  # La VM ya corre la imagen de main; si cambió algo que no va en la VM (web, docs), solo avanza el repo.
   git merge -q --ff-only origin/main
   exit 0
 fi
