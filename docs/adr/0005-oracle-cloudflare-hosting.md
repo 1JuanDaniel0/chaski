@@ -1,7 +1,7 @@
 # ADR 0005: Hosting en Cloudflare Pages y Oracle Cloud Always Free
 
 ## Estado
-Aceptada. Desde el 2026-10-15 la señalización y coturn corren en una VM Ampere A1 de Oracle Cloud en Santiago (`sa-santiago-1`), con cuenta Pay As You Go y dentro de Always Free. El presupuesto y la cuota están en [primeros pasos, sección 11](../primeros-pasos.md#11-presupuesto-y-cuota-de-oracle).
+Aceptada. Desde el 2026-10-15 la señalización y coturn corren en una VM Ampere A1 de Oracle Cloud en Santiago (`sa-santiago-1`), con cuenta Pay As You Go y dentro de Always Free. El presupuesto y la cuota están en [despliegue, sección 8](../despliegue.md#8-presupuesto-y-cuota-en-oracle).
 
 Antes, del 2026-10-07 al 2026-10-15, la VM estuvo de forma temporal en AWS (São Paulo), pagada con un crédito, y se borró el 2026-10-19. Diferencias que se vieron ahí: el firewall de la nube es el Security Group (mismos puertos que la Security List), la IP fija es una Elastic IP, el Ubuntu de AWS no trae el REJECT de Oracle en iptables y la salida de datos se cobra (~0,09 USD/GB).
 

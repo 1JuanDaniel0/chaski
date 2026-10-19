@@ -4,7 +4,7 @@
 #
 # DOS FIREWALLS (hay que abrir los dos o nada llega):
 #  1) VCN Security List / NSG de Oracle (en la consola web): se configura a mano,
-#     ver docs/primeros-pasos.md.
+#     ver docs/despliegue.md.
 #  2) Firewall del sistema operativo: las imágenes de Oracle traen reglas iptables
 #     persistentes en /etc/iptables/rules.v4 que rechazan casi todo. Este script
 #     inserta las reglas necesarias ANTES de la regla REJECT y las guarda con

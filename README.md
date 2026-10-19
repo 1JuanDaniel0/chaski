@@ -114,6 +114,8 @@ Abre `http://localhost:5173` en dos pestañas y ya puedes transferir.
 
 Si usas un túnel, agrega su origen a `ALLOWED_ORIGINS` de la señalización.
 
+**Montar una instancia propia** (VM, Cloudflare, certificados, despliegue automático): [docs/despliegue.md](docs/despliegue.md).
+
 ## Estructura del repositorio
 
 ```
@@ -126,7 +128,7 @@ chasqui/
 │   ├── protocol.md       # Contrato cliente <-> servidor
 │   ├── architecture.md
 │   ├── threat-model.md
-│   ├── primeros-pasos.md # Checklist de configuración inicial
+│   ├── despliegue.md     # Cómo montar una instancia propia
 │   └── adr/              # Decisiones de arquitectura
 ├── .github/        # Workflows de CI, Dependabot, plantilla de PR
 ├── SECURITY.md
