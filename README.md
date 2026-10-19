@@ -9,6 +9,8 @@ Pasa archivos y texto entre dos dispositivos escaneando un QR. Sin cuentas, sin 
 
 **Demo:** https://chaski.me
 
+> **In English:** Chaski moves files and text between two devices by scanning a QR code. No accounts, nothing to install, nothing stored on a server. Data goes browser to browser over WebRTC, end-to-end encrypted; the server only helps the two devices find each other and cannot read what passes. Stack: React + TypeScript (PWA), Spring Boot 3 / Java 21 signaling, coturn, Docker on Oracle Cloud, Cloudflare Pages. The docs are in Spanish.
+
 ![La PC muestra el QR, el celular lo escanea y le pasa una foto y un texto](docs/assets/demo.gif)
 
 ## Qué es
@@ -70,6 +72,15 @@ flowchart LR
 
 La línea gruesa es el camino normal de los datos. Las punteadas solo se usan cuando no hay ruta directa, y aun así el contenido va cifrado. Más en [docs/architecture.md](docs/architecture.md).
 
+## Puntos técnicos
+
+- **Protocolo propio sobre WebRTC** ([docs/protocol.md](docs/protocol.md)): el secreto del QR vive en el fragmento de la URL, y de él salen con HKDF la sala y la clave AES-GCM que cifra la señalización.
+- **Reconexión sin reescanear** (RF4): token de reanudación, reinicio de ICE y huella DTLS fijada; una transferencia sobrevive al cambio de wifi a datos móviles.
+- **Control de flujo para el relevo TURN** ([ADR 0006](docs/adr/0006-relevo-sin-tope-y-costo.md)): ventana de envío con acuses (`file-ack`) que mide el RTT y frena antes de que se llene la cola, diagnosticada con volcados de `webrtc-internals` de producción.
+- **Archivos grandes sin agotar la RAM**: el receptor arma el archivo por tramos de 8 MB.
+- **Costo acotado**: credenciales TURN temporales con límite por IP, máximo de sesiones y un tope mensual de salida que apaga el relevo.
+- **CI/CD y seguridad**: GitHub Actions (tests, imagen multiarquitectura en GHCR), Dependabot, CodeQL, CSP estricta, [modelo de amenazas](docs/threat-model.md) y [decisiones de arquitectura](docs/adr/).
+
 ## Stack
 
 | Pieza | Tecnología |
@@ -126,9 +137,9 @@ chasqui/
 
 | Fase | Requisitos |
 |------|------------|
-| **MVP** | RF1 emparejar por QR, RF2 archivos en ambos sentidos (varios, con progreso y cancelación), RF3 texto con copiado en un toque |
-| **Fase 2** | RF5 menú Compartir de Android (share target) ✅, RF4 reconexión automática ✅, escritura directa a disco (streaming) |
-| **Fase 3** | RF6 emparejar con código corto (PAKE), RF7 modo mostrador (QR fijo para un negocio que solo recibe) |
+| **MVP** ✅ | RF1 emparejar por QR, RF2 archivos en ambos sentidos (varios, con progreso y cancelación), RF3 texto con copiado en un toque |
+| **Fase 2** ✅ | RF5 menú Compartir de Android (share target), RF4 reconexión automática, archivos grandes armados por tramos (hasta 500 MB, el límite de los Blobs del navegador) |
+| **Fase 3** (pospuesta) | RF6 emparejar con código corto (PAKE), RF7 modo mostrador (QR fijo para un negocio que solo recibe) |
 
 **Ideas en evaluación** (se deciden según lo que pidan los usuarios):
 
@@ -140,6 +151,10 @@ chasqui/
 ## Contribuir y seguridad
 
 Usa ramas por funcionalidad, PRs y Conventional Commits. Para reportar vulnerabilidades mira [SECURITY.md](SECURITY.md).
+
+## Autor
+
+Juan Daniel Ulloa Vega ([@1JuanDaniel0](https://github.com/1JuanDaniel0)), estudiante de Ingeniería de las Telecomunicaciones.
 
 ## Licencia
 

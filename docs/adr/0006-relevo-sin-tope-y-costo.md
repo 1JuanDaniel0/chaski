@@ -16,7 +16,7 @@ Por qué pasa:
   1. Límite suave por relevo, por ejemplo 2 GB al día por sala. Las conexiones directas siguen sin límite.
   2. Plan de pago para negocios, ligado a RF7 modo mostrador (imprentas o cabinas que reciben archivos todo el día).
   3. Botón de donación.
-- Se decide con los números de `ruta_relay` del resumen diario de la señalización y con el gasto real en AWS.
+- Se decide con los números de `ruta_relay` del resumen diario de la señalización y con la salida real de la VM frente a los 10 TB gratis de Oracle (`turn-budget.sh --status`).
 
 ### Ventana de envío por relevo
 Sin los topes, la PC del trabajo seguía atascándose al empezar: en los volcados de producción Chrome descartó entre 290 y 677 paquetes en el primer segundo (`packetsDiscardedOnSend`) y el canal pasó 1 a 2 minutos a ~6 KB/s. Un primer intento (PR #43: arrancar a 512 KiB/s y duplicar cada 0,5 s) solo acortó el atasco a 55 s. El 4.º volcado mostró además el patrón completo: al llegar a ~1,7 MB/s (el techo de ese camino) el RTT sube de 170 a 300 ms durante decenas de segundos, la PC descarta 380-500 paquetes de golpe y la velocidad cae a ~50 KB/s; tarda ~45 s en volver a subir y el ciclo se repite cada ~100 s. Es una cola que se llena hasta desbordar: SCTP solo reacciona a las pérdidas, y para entonces ya perdió cientos de paquetes.

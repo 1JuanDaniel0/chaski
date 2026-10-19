@@ -12,3 +12,4 @@ certs/
 .vscode/
 *.iml
 infra/.turn-budget
+infra/.auto-deploy.lock
