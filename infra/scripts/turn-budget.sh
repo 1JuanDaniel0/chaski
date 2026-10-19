@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Tope duro de gasto del relevo (ADR 0006). Suma lo que sale por la red de la VM en el mes (UTC, como la factura
-# de AWS) y, al pasar TURN_MONTHLY_GB, apaga coturn hasta el mes siguiente. Las conexiones directas siguen
+# de la nube) y, al pasar TURN_MONTHLY_GB, apaga coturn hasta el mes siguiente. Las conexiones directas siguen
 # funcionando; solo las que necesitan relevo dejan de conectarse.
 # deploy.sh lo pone en cron (cada minuto) y lo ejecuta al final de cada despliegue.
 # Uso: ./turn-budget.sh            revisa y aplica el tope
