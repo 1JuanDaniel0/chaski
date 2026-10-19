@@ -39,7 +39,7 @@ Pasos:
 | 49160-49360 | UDP | 0.0.0.0/0 |
 | 8443 | TCP | Rangos de Cloudflare (https://www.cloudflare.com/ips-v4), una regla por rango |
 
-- [ ] Entra por SSH (`ubuntu@<IP>`) y clona el repo: `git clone https://github.com/1JuanDaniel0/chasqui.git ~/chasqui`.
+- [ ] Entra por SSH (`ubuntu@<IP>`) y clona el repo: `git clone https://github.com/1JuanDaniel0/chaski.git ~/chasqui` (los scripts y el cron asumen `~/chasqui`).
 - [ ] Ejecuta `sudo infra/scripts/provision-vm.sh`. Instala Docker y abre el firewall del sistema: el Ubuntu de Oracle trae iptables con un REJECT por defecto, así que sin este script nada llega a coturn. Ojo: Docker publica el 8443 con NAT y ese tráfico no pasa por la cadena `INPUT`, así que **quien deja el 8443 solo para Cloudflare es la Security List**; no lo abras ahí a 0.0.0.0/0. Para ver si llegan conexiones: `sudo iptables -L DOCKER -n -v -x | grep dpt:8443`.
 - [ ] Anota la IP pública y la privada (`ip a`, suele ser `10.0.0.x`) para `TURN_EXTERNAL_IP`.
 

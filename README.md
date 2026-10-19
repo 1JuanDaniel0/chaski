@@ -1,8 +1,8 @@
 # Chaski
 
-[![web](https://github.com/1juandaniel0/chasqui/actions/workflows/web.yml/badge.svg)](https://github.com/1juandaniel0/chasqui/actions/workflows/web.yml)
-[![signal](https://github.com/1juandaniel0/chasqui/actions/workflows/signal.yml/badge.svg)](https://github.com/1juandaniel0/chasqui/actions/workflows/signal.yml)
-[![security](https://github.com/1juandaniel0/chasqui/actions/workflows/security.yml/badge.svg)](https://github.com/1juandaniel0/chasqui/actions/workflows/security.yml)
+[![web](https://github.com/1juandaniel0/chaski/actions/workflows/web.yml/badge.svg)](https://github.com/1juandaniel0/chaski/actions/workflows/web.yml)
+[![signal](https://github.com/1juandaniel0/chaski/actions/workflows/signal.yml/badge.svg)](https://github.com/1juandaniel0/chaski/actions/workflows/signal.yml)
+[![security](https://github.com/1juandaniel0/chaski/actions/workflows/security.yml/badge.svg)](https://github.com/1juandaniel0/chaski/actions/workflows/security.yml)
 [![Licencia: AGPL-3.0](https://img.shields.io/badge/licencia-AGPL--3.0-blue.svg)](LICENSE)
 
 Pasa archivos y texto entre dos dispositivos escaneando un QR. Sin cuentas, sin instalar nada en la PC y sin que nada se guarde en un servidor.
@@ -119,7 +119,7 @@ Si usas un túnel, agrega su origen a `ALLOWED_ORIGINS` de la señalización.
 ## Estructura del repositorio
 
 ```
-chasqui/
+chaski/
 ├── apps/
 │   ├── web/        # Cliente React + TypeScript + Vite
 │   └── signal/     # Servidor de señalización (Spring Boot)
