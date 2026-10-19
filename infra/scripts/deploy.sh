@@ -31,9 +31,11 @@ fi
 # apagado por el tope). Ver scripts/turn-budget.sh.
 if command -v crontab >/dev/null 2>&1; then
   CRON_LINE="* * * * * $INFRA_DIR/scripts/turn-budget.sh >> $INFRA_DIR/turn-budget.log 2>&1"
-  { crontab -l 2>/dev/null | grep -vF 'scripts/turn-budget.sh' || true; echo "$CRON_LINE"; } | crontab -
+  # Despliegue automático: la VM revisa main cada 5 minutos (ver scripts/auto-deploy.sh).
+  DEPLOY_LINE="*/5 * * * * $INFRA_DIR/scripts/auto-deploy.sh >> $INFRA_DIR/auto-deploy.log 2>&1"
+  { crontab -l 2>/dev/null | grep -vE 'scripts/(turn-budget|auto-deploy)\.sh' || true; echo "$CRON_LINE"; echo "$DEPLOY_LINE"; } | crontab -
 else
-  echo "AVISO: no hay cron; el tope de gasto del relevo no se revisará solo" >&2
+  echo "AVISO: no hay cron; ni el tope de gasto del relevo ni el despliegue automático correrán solos" >&2
 fi
 "$INFRA_DIR/scripts/turn-budget.sh" --status
 docker image prune -f >/dev/null

@@ -128,16 +128,14 @@ Si el par elegido es `srflx`, la conexión fue directa y TURN no se usó; es lo 
 | 2026-10-07 | PC Windows (wifi) | Android, Chrome, datos móviles 5G | OK (script de humo) | OK / OK / OK en ambas redes, relay con la IP de la VM de AWS de entonces | Directa: `prflx` (PC) ↔ `srflx` (celular), UDP, RTT 36-230 ms | Foto y archivo en ambos sentidos OK. TURN no hizo falta en la app. El ICE pasó a `disconnected` y volvió a `connected` dos veces sin cortar la transferencia. Un aviso 701 en Trickle ICE de la PC no impidió los relay |
 | 2026-10-15 | PC Windows | Android, Chrome, datos móviles | OK (script de humo), ya en Oracle | relay OK en 3478 UDP/TCP y TURNS 443, IP de la VM de Oracle | Sin verificar (archivos pequeños) | Primera prueba tras la mudanza a Oracle. 65 KB y 43 KB en ambos sentidos OK. Con archivos tan pequeños lo normal es la ruta directa, así que no prueba el relevo en la app |
 
-## 8. Secretos y entorno de GitHub
+## 8. Despliegue automático
 
-En Settings, Secrets and variables, Actions:
+La VM se despliega sola: cada 5 minutos `infra/scripts/auto-deploy.sh` (lo pone en cron `deploy.sh`) trae `main` y, si el último commit cambió `apps/signal` o `infra/`, espera a que el workflow `signal` publique la imagen con ese SHA en GHCR y ejecuta `deploy.sh` con ella. Si solo cambió la web o los docs, avanza el repo y no reinicia nada. Así GitHub no entra a la VM y el puerto 22 puede seguir abierto solo para tu IP.
 
-- [ ] `VM_HOST`: IP pública o `turn.<dominio>`.
-- [ ] `VM_USER`: usuario SSH (por ejemplo `ubuntu`).
-- [ ] `VM_SSH_KEY`: llave privada SSH **dedicada al despliegue** (genérala con `ssh-keygen -t ed25519`, agrega la pública a `~/.ssh/authorized_keys` de la VM).
-- [ ] Settings, Environments: crea `production` (opcional: pide aprobación manual).
-
-Sin estos secretos, el workflow `signal` construye y publica la imagen pero omite el despliegue.
+- [ ] Después del primer `deploy.sh`, `crontab -l` debe mostrar las líneas de `turn-budget.sh` y `auto-deploy.sh`.
+- [ ] Tras mergear un cambio de la señalización, mira `tail infra/auto-deploy.log`: primero sale "esperando la imagen …" y, cuando el workflow termina, "desplegando …". Si se queda esperando, el job `image` de ese commit falló: arréglalo con otro merge.
+- [ ] Rollback: lo normal es revertir el PR en GitHub y el automático despliega el revert. Para volver ya mismo: `SIGNAL_TAG=<sha completo del commit bueno> infra/scripts/deploy.sh`, pero con el próximo merge a `main` (sea lo que sea) el automático vuelve a la última imagen de `main`, así que revierte igual.
+- [ ] Si antes usabas el deploy por SSH desde GitHub: borra los secretos `VM_HOST`, `VM_USER` y `VM_SSH_KEY`, el environment `production` y la llave pública de ese deploy en `~/.ssh/authorized_keys` de la VM.
 
 ## 9. Protección de `main`
 
