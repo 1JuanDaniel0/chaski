@@ -8,7 +8,8 @@ set -euo pipefail
 INFRA_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 REPO_DIR="$(cd "$INFRA_DIR/.." && pwd)"
 IMAGE=ghcr.io/1juandaniel0/chasqui-signal
-# Las mismas rutas que disparan el workflow `signal` en main: un commit que las toca tiene imagen con su SHA.
+# Las mismas rutas que disparan el workflow `signal` en main: un commit de main que las toca tiene imagen con su SHA.
+# --first-parent porque la imagen lleva el SHA del merge del PR, no el de los commits de la rama.
 IMAGE_PATHS=(apps/signal .github/workflows/signal.yml infra)
 
 # Si la pasada anterior sigue (por ejemplo, un docker pull lento), no se cruza con ella.
@@ -19,7 +20,7 @@ cd "$REPO_DIR"
 git fetch -q origin main
 [[ "$(git rev-parse HEAD)" == "$(git rev-parse origin/main)" ]] && exit 0
 
-TAG="$(git log -1 --format=%H origin/main -- "${IMAGE_PATHS[@]}")"
+TAG="$(git log -1 --first-parent --format=%H origin/main -- "${IMAGE_PATHS[@]}")"
 CURRENT="$(sed -n 's/^SIGNAL_TAG=//p' "$INFRA_DIR/.env")"
 
 if [[ "$TAG" == "$CURRENT" ]]; then
