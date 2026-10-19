@@ -158,7 +158,7 @@ Usa ramas por funcionalidad, PRs y Conventional Commits. Para reportar vulnerabi
 
 Juan Daniel Ulloa Vega ([@1JuanDaniel0](https://github.com/1JuanDaniel0)), estudiante de Ingeniería de las Telecomunicaciones.
 
-Hecho con ayuda de [Claude Code](https://claude.com/claude-code). Yo definí el producto y los requisitos, decidí la arquitectura y los compromisos de cada [ADR](docs/adr/), monté y opero la infraestructura, y probé cada cambio en producción. Gran parte del código se escribió con Claude Code y lo revisé en pull requests (los commits llevan `Co-Authored-By: Claude`).
+Hecho con ayuda de [Claude Code](https://claude.com/claude-code). Yo definí el producto y los requisitos, decidí la arquitectura y los compromisos de cada [ADR](docs/adr/), monté y opero la infraestructura, y probé cada cambio en producción. Gran parte del código se escribió con Claude Code y lo revisé en pull requests.
 
 ## Licencia
 
