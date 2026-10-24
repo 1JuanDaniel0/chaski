@@ -14,7 +14,7 @@
   "dependencies": {
     "@fontsource-variable/outfit": "5.3.0",
     "@phosphor-icons/react": "2.1.10",
-    "motion": "14.0.0",
+    "motion": "14.5.0",
     "react": "19.3.0",
     "react-dom": "19.3.0",
     "uqr": "0.1.3"
