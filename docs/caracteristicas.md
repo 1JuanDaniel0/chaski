@@ -7,6 +7,7 @@ Chaski pasa archivos y texto entre tu celular y una PC escaneando un QR. Está p
 ### Conectar
 - **Un QR y listo.** La PC muestra un QR al instante. Lo escaneas con la cámara del celular y se conectan solos.
 - **Escáner dentro de la app** (Android, Chrome): botón "Escanear el QR de la PC", sin salir de Chaski.
+- **Código de 6 dígitos** para cuando no hay cámara o se pasa de PC a PC: debajo del QR aparece un código (cambia cada 2 minutos) que se escribe en la otra pantalla con "Tengo un código". Un código equivocado lo invalida y la PC muestra otro. Detalle en [protocol.md §9](protocol.md#9-emparejar-por-código-rf6).
 - **Sin cuentas ni registro.** No hay usuario, correo ni contraseña.
 - **Sin instalar nada.** Funciona en el navegador. En Android se puede instalar como app (PWA) de forma opcional.
 - **Funciona entre redes distintas.** Por ejemplo, la PC en el wifi del trabajo y el celular con datos móviles. Si no hay ruta directa, usa un relevo (TURN), y los datos siguen cifrados.

@@ -8,6 +8,7 @@ import org.springframework.web.socket.TextMessage;
 import org.springframework.web.socket.WebSocketSession;
 import org.springframework.web.socket.handler.ConcurrentWebSocketSessionDecorator;
 import org.springframework.web.socket.handler.TextWebSocketHandler;
+import pe.chasqui.signal.code.CodeRegistry;
 import pe.chasqui.signal.config.ChasquiProperties;
 import pe.chasqui.signal.metrics.SignalMetrics;
 import pe.chasqui.signal.ratelimit.FixedWindowLimiter;
@@ -32,11 +33,14 @@ public class SignalHandler extends TextWebSocketHandler {
     private final FixedWindowLimiter joinLimiter;
     private final ClientMessageParser parser;
     private final SignalMetrics metrics;
+    private final CodeRegistry codes;
 
     public SignalHandler(ChasquiProperties props, RoomRegistry registry, TurnCredentials turn,
-                         FixedWindowLimiter joinLimiter, ClientMessageParser parser, SignalMetrics metrics) {
+                         FixedWindowLimiter joinLimiter, ClientMessageParser parser, SignalMetrics metrics,
+                         CodeRegistry codes) {
         this.props = props;
         this.registry = registry;
+        this.codes = codes;
         this.turn = turn;
         this.joinLimiter = joinLimiter;
         this.parser = parser;
@@ -52,6 +56,8 @@ public class SignalHandler extends TextWebSocketHandler {
         final String ip;
         final TokenBucket bucket;
         volatile Peer peer;
+        /** Lado de un casillero de código (§9). Un socket está en una sala o en un casillero, nunca en los dos. */
+        volatile CodeRegistry.Side code;
 
         ConnState(WebSocketSession raw, String ip, TokenBucket bucket) {
             this.session = new ConcurrentWebSocketSessionDecorator(raw, SEND_TIME_LIMIT_MS, SEND_BUFFER_LIMIT);
@@ -148,7 +154,63 @@ public class SignalHandler extends TextWebSocketHandler {
                     metrics.report(r.route());
                 }
             }
+            case ClientMessage.CodeOpen o -> onCodeOpen(st);
+            case ClientMessage.CodeJoin cj -> onCodeJoin(st, cj);
+            case ClientMessage.Pake p -> {
+                CodeRegistry.Side side = st.code;
+                if (side == null) {
+                    fail(st, ErrorCode.NOT_IN_ROOM, "open or join a code first");
+                    return;
+                }
+                switch (codes.pake(side, p.data())) {
+                    case NOT_PAIRED -> fail(st, ErrorCode.NOT_IN_ROOM, "nobody entered the code yet");
+                    case TOO_MANY -> fail(st, ErrorCode.RATE_LIMITED, "too many pake messages");
+                    case OK -> { }
+                }
+            }
         }
+    }
+
+    /** Un socket que ya está en una sala o en un casillero no puede pedir otro. */
+    private boolean busy(ConnState st) {
+        if (st.peer != null || st.code != null) {
+            fail(st, ErrorCode.NOT_IN_ROOM, "already joined");
+            return true;
+        }
+        return false;
+    }
+
+    private void onCodeOpen(ConnState st) {
+        if (busy(st)) {
+            return;
+        }
+        if (!joinLimiter.tryAcquire(st.ip)) {
+            fail(st, ErrorCode.RATE_LIMITED, "too many joins");
+            return;
+        }
+        CodeRegistry.Side side = codes.open(st);
+        if (side == null) {
+            fail(st, ErrorCode.CODES_BUSY, "no free code");
+            return;
+        }
+        st.code = side;
+        st.send(Frames.code(side.slotId(), codes.openTtlSeconds()));
+    }
+
+    private void onCodeJoin(ConnState st, ClientMessage.CodeJoin cj) {
+        if (busy(st)) {
+            return;
+        }
+        if (!joinLimiter.tryAcquire(st.ip)) {
+            fail(st, ErrorCode.RATE_LIMITED, "too many joins");
+            return;
+        }
+        CodeRegistry.Side side = codes.join(cj.slot(), st);
+        if (side == null) {
+            fail(st, ErrorCode.BAD_CODE, "unknown or expired code");
+            return;
+        }
+        st.code = side;
     }
 
     private Peer requirePeer(ConnState st) {
@@ -160,8 +222,7 @@ public class SignalHandler extends TextWebSocketHandler {
     }
 
     private void onJoin(ConnState st, ClientMessage.Join j) {
-        if (st.peer != null) {
-            fail(st, ErrorCode.NOT_IN_ROOM, "already joined");
+        if (busy(st)) {
             return;
         }
         if (!joinLimiter.tryAcquire(st.ip)) {
@@ -210,6 +271,9 @@ public class SignalHandler extends TextWebSocketHandler {
         ConnState st = (ConnState) raw.getAttributes().get(ATTR_STATE);
         if (st != null && st.peer != null) {
             registry.leave(st.peer);
+        }
+        if (st != null && st.code != null) {
+            codes.leave(st.code);
         }
     }
 }

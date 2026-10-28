@@ -15,6 +15,8 @@ public class ClientMessageParser {
     private static final Pattern TOKEN = ROOM_ID;
     private static final Set<String> ROUTES = Set.of("host", "srflx", "relay", "failed");
     private static final int MAX_PEER_ID = 64;
+    private static final Pattern SLOT = Pattern.compile("^[0-9]{2}$");
+    private static final Pattern PAKE_DATA = Pattern.compile("^[A-Za-z0-9_-]{1,512}$");
 
     public ClientMessage parse(String text) throws ProtocolException {
         JsonNode n;
@@ -50,15 +52,38 @@ public class ClientMessageParser {
                 yield new ClientMessage.Report(route, n.has("ms") ? integer(n, "ms", false) : 0);
             }
             case "ping" -> new ClientMessage.Ping();
+            case "code-open" -> {
+                version(n);
+                yield new ClientMessage.CodeOpen();
+            }
+            case "code-join" -> {
+                version(n);
+                String slot = string(n, "slot");
+                if (slot == null || !SLOT.matcher(slot).matches()) {
+                    throw bad("invalid slot");
+                }
+                yield new ClientMessage.CodeJoin(slot);
+            }
+            case "pake" -> {
+                String data = string(n, "data");
+                if (data == null || !PAKE_DATA.matcher(data).matches()) {
+                    throw bad("invalid data");
+                }
+                yield new ClientMessage.Pake(data);
+            }
             default -> throw bad("unknown type");
         };
     }
 
-    private ClientMessage join(JsonNode n) throws ProtocolException {
+    private static void version(JsonNode n) throws ProtocolException {
         long v = integer(n, "v", false);
         if (v != 1) {
             throw new ProtocolException(ErrorCode.UNSUPPORTED_VERSION, "only v=1 is supported");
         }
+    }
+
+    private ClientMessage join(JsonNode n) throws ProtocolException {
+        version(n);
         String roomId = string(n, "roomId");
         if (roomId == null || !ROOM_ID.matcher(roomId).matches()) {
             throw bad("invalid roomId");

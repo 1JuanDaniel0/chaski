@@ -1,13 +1,15 @@
+import { formatCode, parseCode } from '../crypto/code';
 import { deriveKeys, generateSecret, parseSecret, secretToString } from '../crypto/keys';
 import { cleanDeviceLabel, describeDevice } from '../lib/device';
 import { SignalingClient } from '../signaling/client';
+import { hostCode, joinCode, type GuestFailure } from '../signaling/code';
 import type { Route, SignalPayload, TurnConfig } from '../signaling/messages';
 import { TransferManager, type ChannelLike, type TransferItem } from '../transfer/manager';
 import { PeerLink } from '../transfer/peer';
 import { QR_EXPIRY_MS, RECONNECT, SIGNAL_URL } from './config';
 import { sharePending, takeShared, type Shared } from './share';
 
-export type Phase = 'scan' | 'starting' | 'waiting' | 'connecting' | 'connected' | 'reconnecting' | 'peer-left' | 'kicked' | 'error';
+export type Phase = 'scan' | 'code' | 'starting' | 'waiting' | 'connecting' | 'connected' | 'reconnecting' | 'peer-left' | 'kicked' | 'error';
 
 export interface View {
   phase: Phase;
@@ -21,9 +23,36 @@ export interface View {
   outbox: Shared | null;
   /** Por dónde va la conexión: directa (host/srflx) o por el relevo TURN. Null hasta saberlo. */
   route: Exclude<Route, 'failed'> | null;
+  /** Código de 6 dígitos que muestra la PC junto al QR (RF6), ya formateado; null si no hay. */
+  code: string | null;
+  /** Pantalla "Escribe el código": verificando, o por qué falló. */
+  codeChecking: boolean;
+  codeError: string | null;
 }
 
-const INITIAL: View = { phase: 'starting', shareUrl: null, isOwner: false, peerDevice: null, items: [], warning: null, error: null, outbox: null, route: null };
+const INITIAL: View = {
+  phase: 'starting',
+  shareUrl: null,
+  isOwner: false,
+  peerDevice: null,
+  items: [],
+  warning: null,
+  error: null,
+  outbox: null,
+  route: null,
+  code: null,
+  codeChecking: false,
+  codeError: null,
+};
+
+const CODE_ERRORS: Record<GuestFailure, string> = {
+  'bad-code': 'Ese código no existe o ya venció. Revisa el que muestra la otra pantalla.',
+  wrong: 'El código no coincide. La otra pantalla ya muestra uno nuevo: escríbelo otra vez.',
+  'rate-limited': 'Demasiados intentos. Espera un minuto.',
+  network: 'Sin conexión con el servidor. Revisa tu red.',
+};
+/** Tope de espera entre intentos de pedir un código nuevo si el servidor no responde. */
+const CODE_MAX_BACKOFF_MS = 30_000;
 
 const ERRORS: Record<string, string> = {
   'room-full': 'La sala ya tiene dos dispositivos.',
@@ -46,6 +75,11 @@ export class Controller {
   private linked = false;
   /** Retoma la sesión ya: señalización caída o ruta directa cortada (al volver la red o la pestaña). */
   private wake: (() => void) | null = null;
+  /** Socket del código que muestra la PC (RF6). */
+  private codeHost: { close(): void } | null = null;
+  private codeTimer: ReturnType<typeof setTimeout> | null = null;
+  /** Intento en curso de entrar con un código escrito. */
+  private codeJoin: { cancel(): void } | null = null;
 
   subscribe = (l: () => void): (() => void) => {
     this.listeners.add(l);
@@ -119,6 +153,73 @@ export class Controller {
     this.set({ ...INITIAL, phase: 'scan' });
   }
 
+  /** Pantalla para escribir el código de otra pantalla (sin cámara, o de PC a PC). */
+  enterCode(): void {
+    this.teardown();
+    this.set({ ...INITIAL, phase: 'code', outbox: this.view.outbox });
+  }
+
+  /** Entra a la sala de la otra pantalla con su código: CPace entrega el mismo secreto que tendría su QR. */
+  submitCode(input: string): void {
+    const code = parseCode(input);
+    if (!code) {
+      this.set({ codeError: 'El código tiene 6 dígitos.' });
+      return;
+    }
+    this.codeJoin?.cancel();
+    const attempt = joinCode(SIGNAL_URL, code);
+    this.codeJoin = attempt;
+    this.set({ codeChecking: true, codeError: null });
+    attempt.result.then(
+      (secret) => {
+        if (this.codeJoin !== attempt) return;
+        this.codeJoin = null;
+        this.join(secret);
+      },
+      (f: GuestFailure) => {
+        if (this.codeJoin !== attempt) return;
+        this.codeJoin = null;
+        this.set({ codeChecking: false, codeError: CODE_ERRORS[f] });
+      },
+    );
+  }
+
+  /**
+   * La PC que espera muestra además un código. Si vence, se usa mal o se cae el servidor, pide otro mientras siga
+   * esperando. Si no hay casilleros libres, se queda solo con el QR.
+   */
+  private showCode(secret: Uint8Array<ArrayBuffer>, gen: number, failures = 0): void {
+    if (gen !== this.gen || this.view.phase !== 'waiting') return;
+    let shown = false;
+    this.codeHost = hostCode(SIGNAL_URL, secret, {
+      onCode: (code) => {
+        shown = true;
+        if (gen === this.gen) this.set({ code: formatCode(code) });
+      },
+      onWrong: () => {
+        if (gen === this.gen) this.set({ warning: 'Alguien escribió un código incorrecto. Ese código ya no sirve: te mostramos otro.' });
+      },
+      onClosed: (reason) => {
+        if (gen !== this.gen) return;
+        this.codeHost = null;
+        this.set({ code: null });
+        if (reason === 'busy') return;
+        const next = shown ? 0 : failures + 1;
+        // Tras entregar el secreto, el otro entra a la sala en un momento; si no llega, vuelve a haber código.
+        const delay = reason === 'done' ? 5_000 : next === 0 ? 0 : Math.min(CODE_MAX_BACKOFF_MS, 1000 * 2 ** next);
+        this.codeTimer = setTimeout(() => this.showCode(secret, gen, next), delay);
+      },
+    });
+  }
+
+  private hideCode(): void {
+    if (this.codeTimer) clearTimeout(this.codeTimer);
+    this.codeTimer = null;
+    this.codeHost?.close();
+    this.codeHost = null;
+    if (this.view.code) this.set({ code: null });
+  }
+
   /** Descarta lo compartido y sigue con el flujo normal. */
   discardShare(): void {
     this.set({ outbox: null });
@@ -134,6 +235,9 @@ export class Controller {
     this.gen++;
     if (this.expiry) clearTimeout(this.expiry);
     this.expiry = null;
+    this.hideCode();
+    this.codeJoin?.cancel();
+    this.codeJoin = null;
     this.manager?.close();
     this.link?.close();
     this.sig?.close();
@@ -269,7 +373,10 @@ export class Controller {
             this.set({ isOwner: owner });
             if (owner) {
               this.set({ phase: 'waiting' });
-              if (!scanned) this.expiry = setTimeout(() => alive() && this.newRoom(), QR_EXPIRY_MS);
+              if (!scanned) {
+                this.expiry = setTimeout(() => alive() && this.newRoom(), QR_EXPIRY_MS);
+                this.showCode(secret, gen);
+              }
             } else {
               this.remote = msg.peers[0]!;
               this.set({ phase: 'connecting' });
@@ -289,6 +396,7 @@ export class Controller {
             this.remote = msg.peerId;
             if (this.expiry) clearTimeout(this.expiry);
             this.expiry = null;
+            this.hideCode();
             this.set({ phase: 'connecting' });
             sendSig({ kind: 'hello', device: describeDevice(navigator.userAgent) });
             makeLink(true);

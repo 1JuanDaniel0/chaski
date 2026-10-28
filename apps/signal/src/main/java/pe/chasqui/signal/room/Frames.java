@@ -42,6 +42,18 @@ public final class Frames {
         return str(M.createObjectNode().put("type", "signal").put("from", from).put("seq", seq).put("data", data));
     }
 
+    public static String code(String slot, long ttlSeconds) {
+        return str(M.createObjectNode().put("type", "code").put("slot", slot).put("ttl", ttlSeconds));
+    }
+
+    public static String codePaired(String sid) {
+        return str(M.createObjectNode().put("type", "code-paired").put("sid", sid));
+    }
+
+    public static String pake(String data) {
+        return str(M.createObjectNode().put("type", "pake").put("data", data));
+    }
+
     public static String kicked() {
         return "{\"type\":\"kicked\"}";
     }

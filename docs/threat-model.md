@@ -9,6 +9,8 @@ El cifrado resuelve el tránsito. Los riesgos reales están en el código que si
 | Servidor de señalización comprometido intenta MITM | Señalización cifrada y autenticada con `k_sig` (AES-GCM con AAD) | Bajo |
 | Atacante en la misma red (Wi-Fi pública) | DTLS en el canal de datos, TLS en la web y la señalización | Bajo |
 | Alguien fotografía el QR | Sala de máximo 2 dispositivos; la PC muestra quién se conectó y puede expulsarlo; el QR expira a los 10 min sin uso | Medio-bajo |
+| Alguien adivina el código corto (RF6) | CPace: sin el PIN solo hay un intento en vivo por código (1 en 10.000), y un fallo quema el código y avisa en la PC. El PIN nunca llega al servidor; `code-join` cuenta para el límite por IP | Bajo |
+| Servidor de señalización comprometido intenta adivinar el código | El servidor ve el casillero y los mensajes de CPace, que no le permiten probar PINs sin conexión: le queda el mismo intento en vivo de 1 en 10.000 | Bajo |
 | Intruso con el QR aprovecha una reconexión | Cada lado fija la huella DTLS del otro y rechaza renegociaciones con otra; volver a la sala usa un token `resume` que solo conoce cada dispositivo | Bajo: puede estorbar la reconexión, no tomar la sesión |
 | Archivo malicioso | Nada se abre solo; aviso en extensiones ejecutables; nombres saneados (caracteres de control y truco RTLO) | Bajo |
 | XSS vía texto o nombre de archivo | Todo se muestra como texto (prohibido `dangerouslySetInnerHTML`) + CSP estricta | Bajo |
@@ -26,7 +28,8 @@ Firefox Send cerró en 2020 porque sus enlaces se usaban para repartir malware. 
 ## Riesgos residuales
 
 - **Frontend servido por la misma entidad que lo audita.** Si alguien compromete Cloudflare Pages o una dependencia npm, puede servir JavaScript que lea `location.hash`. Por eso: sin terceros, dependencias mínimas, código abierto y CSP.
-- **QR visible.** Quien lo vea o fotografíe mientras la sala está abierta y sin segundo dispositivo podría unirse primero. El usuario ve quién se conectó y puede expulsarlo.
+- **QR visible.** Quien lo vea o fotografíe mientras la sala está abierta y sin segundo dispositivo podría unirse primero. El usuario ve quién se conectó y puede expulsarlo. Lo mismo vale para el código de 6 dígitos que se muestra al lado.
+- **El código es más débil que el QR.** El QR lleva 128 bits; el código, 4 dígitos secretos protegidos por CPace. Por eso el QR sigue siendo la opción principal y el código vence a los 2 minutos.
 - **Metadatos.** Cada dispositivo ve la IP del otro (así funciona WebRTC). El servidor de señalización y TURN ven IPs y tamaños aproximados de tráfico. Los logs no guardan IPs ni `roomId`.
 - **Abuso de TURN y costo de salida.** Mitigado con cuotas, límite de credenciales por IP y un tope mensual que apaga el relevo.
 - **Proxies con inspección TLS** pueden bloquear incluso TURN sobre 443.

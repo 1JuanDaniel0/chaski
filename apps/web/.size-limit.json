@@ -1,3 +1,4 @@
 [
-  { "name": "JS inicial (gzip)", "path": "dist/assets/*.js", "limit": "150 KB", "gzip": true }
+  { "name": "JS inicial (gzip)", "path": "dist/assets/index-*.js", "limit": "150 KB", "gzip": true },
+  { "name": "Código corto: CPace y ristretto255, se carga al usar un código (gzip)", "path": "dist/assets/code-pake-*.js", "limit": "20 KB", "gzip": true }
 ]

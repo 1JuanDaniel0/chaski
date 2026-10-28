@@ -34,6 +34,11 @@ chasqui:
     urls: ${TURN_URLS:}
     ttl-seconds: ${TURN_TTL_SECONDS:3600}
     per-ip-per-day: ${TURN_PER_IP_PER_DAY:100}
+  code:
+    slots: 100
+    open-ttl: 120s
+    paired-ttl: 30s
+    max-pake: 2
 
 logging:
   pattern:
