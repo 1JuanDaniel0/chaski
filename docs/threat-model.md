@@ -16,7 +16,7 @@ El cifrado resuelve el tránsito. Los riesgos reales están en el código que si
 | TURN usado como proxy hacia redes internas (SSRF) | Credenciales temporales y `denied-peer-ip` para rangos privados y de metadatos de la nube | Bajo |
 | Agotar los puertos de relevo de coturn (CVE-2026-73215) | coturn 4.18.0 (corregido desde 4.17.0); versión fija en `docker-compose.yml` | Bajo |
 | TURN usado para gastar ancho de banda (costo de salida de la VM) | Credenciales temporales, como máximo 100 por IP al día; `user-quota` y `total-quota`; tope duro mensual que apaga coturn al pasar `TURN_MONTHLY_GB` (`infra/scripts/turn-budget.sh`). Sin `max-bps` ni `bps-capacity`, que hundían las transferencias por relevo ([ADR 0006](adr/0006-relevo-sin-tope-y-costo.md)) | Bajo: lo peor es perder el relevo hasta fin de mes |
-| Inundación de la señalización (DoS) | Cloudflare delante, límites por IP y por conexión, 8443 solo abierto a rangos de Cloudflare | Medio |
+| Inundación de la señalización (DoS) | Cloudflare delante, límites por IP y por conexión, 8443 solo abierto a rangos de Cloudflare, en la Security List y en la VM (cadena `DOCKER-USER`) | Medio |
 | Secuestro de WebSocket entre sitios (CSWSH) | Validación de `Origin` en el handshake | Bajo |
 | Distribución de malware con enlaces públicos | No hay enlaces persistentes: solo dos dispositivos conectados en vivo | Bajo |
 | PC de destino con monitoreo o antivirus | Fuera de alcance; la interfaz lo dice: el cifrado protege el trayecto, no la PC | Aceptado |

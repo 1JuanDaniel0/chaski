@@ -23,5 +23,7 @@ docker build -t chasqui-signal .
 | `TURN_PER_IP_PER_DAY` | `100`                                        | Credenciales TURN por IP al día; pasado eso, solo conexión directa |
 | `MANAGEMENT_PORT`   | `9090`                                        | `/actuator/health` y `/actuator/prometheus`    |
 
+`GET /healthz` (en el puerto principal) responde `200 ok` sin más detalle, para monitores de uptime.
+
 Los demás límites (§6 del protocolo) son propiedades `chasqui.*` en `application.yml`.
 Las métricas nunca llevan IP ni roomId como etiqueta, y el servidor no los registra en logs.

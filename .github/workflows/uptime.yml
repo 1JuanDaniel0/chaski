@@ -1,0 +1,39 @@
+name: uptime
+
+# Prueba de punta a punta contra producción: la web responde, dos clientes se emparejan por la señalización y
+# coturn concede un relevo por UDP, TCP y TLS. UptimeRobot avisa en minutos si algo deja de responder; esto
+# comprueba cada 6 horas que de verdad se puede usar (ver docs/despliegue.md, "Monitoreo").
+# Si falla, GitHub manda un correo a quien modificó por última vez el cron.
+on:
+  schedule:
+    - cron: "23 */6 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: uptime
+  cancel-in-progress: false
+
+jobs:
+  produccion:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      DOMAIN: chaski.me
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Web
+        run: curl -fsS --max-time 15 "https://$DOMAIN/" | grep -q "Chaski"
+      - name: Salud de la señalización
+        run: test "$(curl -fsS --max-time 15 "https://signal.$DOMAIN/healthz")" = ok
+      - name: Sala de prueba
+        env:
+          TURN_OUT: ${{ runner.temp }}/turn.json
+        run: node infra/scripts/smoke-signal.mjs "wss://signal.$DOMAIN/ws" "https://$DOMAIN"
+      - name: Relevo TURN
+        run: node infra/scripts/smoke-turn.mjs "${{ runner.temp }}/turn.json"

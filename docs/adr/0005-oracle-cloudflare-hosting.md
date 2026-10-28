@@ -20,7 +20,7 @@ Meta de costo: US$0 al mes más el dominio. TURN consume ancho de banda de salid
 - Todo en un solo proveedor de pago: más simple, pero rompe la meta de costo.
 
 ## Consecuencias
-- Hay dos firewalls que configurar (VCN Security List y el del sistema operativo). El del sistema no filtra el 8443: Docker publica ese puerto con NAT y el tráfico no pasa por la cadena `INPUT`, así que el único filtro que lo deja solo para Cloudflare es la Security List.
+- Hay dos firewalls que configurar (VCN Security List y el del sistema operativo). El del sistema no filtra el 8443: Docker publica ese puerto con NAT y el tráfico no pasa por la cadena `INPUT`, así que su filtro dentro de la VM va en la cadena `DOCKER-USER` (`infra/scripts/firewall-8443.sh`), además de la Security List.
 - Oracle puede no tener capacidad ARM (y, sin Pay As You Go, reclamar instancias con poco uso); se mitiga automatizando el despliegue para recrear la VM en minutos.
 - Las imágenes deben ser `linux/arm64`.
 - coturn necesita `external-ip=<pública>/<privada>` por el NAT 1:1 de la VM.

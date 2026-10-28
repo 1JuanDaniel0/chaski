@@ -40,7 +40,7 @@ Pasos:
 | 8443 | TCP | Rangos de Cloudflare (https://www.cloudflare.com/ips-v4), una regla por rango |
 
 - [ ] Entra por SSH (`ubuntu@<IP>`) y clona el repo: `git clone https://github.com/1JuanDaniel0/chaski.git ~/chasqui` (los scripts y el cron asumen `~/chasqui`).
-- [ ] Ejecuta `sudo infra/scripts/provision-vm.sh`. Instala Docker y abre el firewall del sistema: el Ubuntu de Oracle trae iptables con un REJECT por defecto, así que sin este script nada llega a coturn. Ojo: Docker publica el 8443 con NAT y ese tráfico no pasa por la cadena `INPUT`, así que **quien deja el 8443 solo para Cloudflare es la Security List**; no lo abras ahí a 0.0.0.0/0. Para ver si llegan conexiones: `sudo iptables -L DOCKER -n -v -x | grep dpt:8443`.
+- [ ] Ejecuta `sudo infra/scripts/provision-vm.sh`. Instala Docker y abre el firewall del sistema: el Ubuntu de Oracle trae iptables con un REJECT por defecto, así que sin este script nada llega a coturn. Docker publica el 8443 con NAT y ese tráfico no pasa por la cadena `INPUT`, así que el script también instala `chaski-firewall.service`: deja el 8443 solo para Cloudflare en la cadena `DOCKER-USER` (`infra/scripts/firewall-8443.sh`) al arrancar Docker y actualiza los rangos cada semana con `chaski-firewall.timer`. Es una segunda barrera: la Security List sigue siendo la primera, no abras ahí el 8443 a 0.0.0.0/0. Si cambias `firewall-8443.sh`, vuelve a ejecutar `provision-vm.sh` para copiarlo a `/usr/local/sbin`.
 - [ ] Anota la IP pública y la privada (`ip a`, suele ser `10.0.0.x`) para `TURN_EXTERNAL_IP`.
 
 En otra nube los pasos equivalen: la Security List es el firewall de la nube (Security Group en AWS) y la IP reservada es la IP fija (Elastic IP en AWS).
@@ -92,6 +92,8 @@ node infra/scripts/smoke-signal.mjs wss://signal.<dominio>/ws https://<dominio>
 
 Abre dos WebSocket con el `Origin` indicado, los une a una sala nueva y comprueba `joined`, `peer-joined` y el reenvío de un `signal`. Al final imprime las credenciales TURN que entrega el servidor. Si falla al abrir, revisa `ALLOWED_ORIGINS` y que el proxy de Cloudflare deje pasar WebSocket. Si `joined` no trae `turn`, faltan `TURN_SECRET` o `TURN_URLS`.
 
+Para probar el relevo sin navegador: `TURN_OUT=turn.json node infra/scripts/smoke-signal.mjs …` guarda las credenciales en vez de imprimirlas y `node infra/scripts/smoke-turn.mjs turn.json` pide y libera una allocation por cada URL (UDP, TCP y TLS).
+
 **TURN** (en cada red):
 
 - [ ] En [Trickle ICE](https://webrtc.github.io/samples/src/content/peerconnection/trickle-ice/), borra el servidor por defecto y agrega cada URI que imprimió el script con su `username` y `credential`.
@@ -136,3 +138,21 @@ set block-storage quota total-storage-gb to 60 in compartment chaski
 - **Resumen diario.** A medianoche (hora de Lima) la señalización escribe una línea con las salas creadas y emparejadas, las reconexiones y cuántas conexiones fueron directas o por relevo. Sin analítica en la web, es la forma de medir el uso: `docker compose -f infra/docker-compose.yml logs signal | grep "resumen diario"`. Los logs se pierden al redesplegar.
 - **Salida del mes:** `infra/scripts/turn-budget.sh --status`.
 - **Estado:** `docker compose -f infra/docker-compose.yml ps` y `curl -s localhost:9090/actuator/health`.
+- **Filtro del 8443:** `sudo /usr/local/sbin/chaski-firewall-8443 --status` muestra las reglas y sus contadores (los de Cloudflare suben con cada conexión). Vuelta atrás: `sudo systemctl disable --now chaski-firewall.timer chaski-firewall.service` y `sudo /usr/local/sbin/chaski-firewall-8443 --remove`.
+
+## 11. Monitoreo
+
+Dos capas: un monitor externo avisa en minutos si algo deja de responder, y el workflow `uptime` comprueba cada 6 horas que de verdad se puede usar.
+
+**Workflow `uptime`** (`.github/workflows/uptime.yml`): pide la portada, `https://signal.<dominio>/healthz`, crea una sala de prueba con `infra/scripts/smoke-signal.mjs` y pide un relevo a coturn por UDP, TCP y TLS con `infra/scripts/smoke-turn.mjs`, usando las credenciales que entregó la señalización (no se imprimen). Si falla, GitHub manda un correo a quien modificó por última vez el cron. Se puede lanzar a mano en *Actions, uptime, Run workflow*. Cada corrida suma una sala al resumen diario (4 al día). GitHub apaga los workflows programados de un repo público tras 60 días sin actividad: si pasa, se reactiva en la misma pantalla.
+
+**Monitor externo** (por ejemplo, [UptimeRobot](https://uptimerobot.com), plan gratuito), cada 5 minutos y con alerta por correo:
+
+| Monitor | Tipo | Detecta |
+|---------|------|---------|
+| `https://<dominio>` | Palabra clave `Chaski` | Cloudflare Pages o el DNS caídos |
+| `https://signal.<dominio>/healthz` | HTTP(s), espera 200 | VM, Docker o señalización caídos, o Cloudflare sin llegar al 8443 |
+| `turn.<dominio>`, puerto 3478 | Puerto TCP | coturn apagado (por ejemplo, por el tope de `turn-budget.sh`) |
+| `turn.<dominio>`, puerto 443 | Puerto TCP | TURNS caído |
+
+`/healthz` responde `ok` y nada más; el detalle (`/actuator/health`, métricas) sigue escuchando solo en localhost.
