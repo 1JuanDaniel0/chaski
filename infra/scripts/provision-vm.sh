@@ -9,6 +9,8 @@
 #     persistentes en /etc/iptables/rules.v4 que rechazan casi todo. Este script
 #     inserta las reglas necesarias ANTES de la regla REJECT y las guarda con
 #     netfilter-persistent.
+#  3) El 8443 de la señalización lo publica Docker con NAT, que se salta INPUT: su filtro va en la cadena
+#     DOCKER-USER (infra/scripts/firewall-8443.sh), instalado aquí como servicio systemd.
 set -euo pipefail
 
 if [[ $EUID -ne 0 ]]; then
@@ -16,8 +18,7 @@ if [[ $EUID -ne 0 ]]; then
   exit 1
 fi
 
-CF_V4_URL="https://www.cloudflare.com/ips-v4"
-CF_V6_URL="https://www.cloudflare.com/ips-v6"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 TURN_MIN_PORT=49160
 TURN_MAX_PORT=49360
 
@@ -42,11 +43,6 @@ if [[ -n "${SUDO_USER:-}" ]]; then
   usermod -aG docker "$SUDO_USER"
 fi
 
-echo "==> Descargando rangos de IP de Cloudflare"
-CF_V4=$(curl -fsS "$CF_V4_URL")
-CF_V6=$(curl -fsS "$CF_V6_URL")
-[[ -n "$CF_V4" && -n "$CF_V6" ]] || { echo "No se pudieron obtener los rangos de Cloudflare" >&2; exit 1; }
-
 # Inserta una regla solo si no existe (idempotente). Uso: add_rule <iptables|ip6tables> <args...>
 add_rule() {
   local ipt="$1"; shift
@@ -65,19 +61,25 @@ for ipt in iptables ip6tables; do
   add_rule "$ipt" -p udp --dport "${TURN_MIN_PORT}:${TURN_MAX_PORT}" -m comment --comment "chasqui turn relay" -j ACCEPT
 done
 
-# Señalización (8443): solo desde Cloudflare, para que nadie se salte el proxy.
-for cidr in $CF_V4; do
-  add_rule iptables -p tcp -s "$cidr" --dport 8443 -m comment --comment "chasqui signal cloudflare" -j ACCEPT
+# Versiones anteriores de este script ponían el filtro del 8443 en INPUT, donde no sirve (Docker usa NAT):
+# se borran esas reglas, si existen.
+for ipt in iptables ip6tables; do
+  { "$ipt" -S INPUT | grep -- '--comment "chasqui signal cloudflare"' || true; } | sed 's/^-A /-D /' | while read -r rule; do
+    eval "$ipt $rule"
+  done
 done
-for cidr in $CF_V6; do
-  add_rule ip6tables -p tcp -s "$cidr" --dport 8443 -m comment --comment "chasqui signal cloudflare" -j ACCEPT
-done
-# El puerto 8443 NO se abre a nadie más: cae en el REJECT/DROP por defecto.
-# Nota: si se renuevan los rangos de Cloudflare, vuelve a ejecutar este script
-# (las reglas viejas no se borran; para limpiar usa: iptables -S | grep "signal cloudflare").
 
 echo "==> Guardando reglas (netfilter-persistent -> /etc/iptables/rules.v4)"
 netfilter-persistent save
+
+echo "==> Filtro del 8443 en DOCKER-USER (solo Cloudflare)"
+install -m 755 "$SCRIPT_DIR/firewall-8443.sh" /usr/local/sbin/chaski-firewall-8443
+install -m 644 "$SCRIPT_DIR/../systemd/chaski-firewall.service" "$SCRIPT_DIR/../systemd/chaski-firewall.timer" /etc/systemd/system/
+systemctl daemon-reload
+systemctl enable chaski-firewall.service
+systemctl enable --now chaski-firewall.timer
+systemctl restart chaski-firewall.service
+/usr/local/sbin/chaski-firewall-8443 --status
 
 echo
 echo "Listo. Recuerda abrir también en la VCN Security List de Oracle:"

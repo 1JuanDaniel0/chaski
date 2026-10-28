@@ -1,12 +1,15 @@
 #!/usr/bin/env node
 // Prueba de humo de la señalización: dos clientes entran a la misma sala, se ven y se
 // reenvían un `signal`. Imprime las credenciales TURN que entrega el servidor para
-// probarlas en Trickle ICE (ver docs/primeros-pasos.md, "Prueba de punta a punta").
+// probarlas en Trickle ICE (ver docs/despliegue.md, "Prueba de punta a punta").
 //
 // Uso (Node 22+, sin dependencias):
 //   node infra/scripts/smoke-signal.mjs [wss://signal.chaski.me/ws] [https://chaski.me]
 // El segundo argumento es la cabecera Origin; debe estar en ALLOWED_ORIGINS.
+// Con TURN_OUT=turn.json guarda las credenciales en ese archivo (para smoke-turn.mjs) en vez de imprimirlas,
+// así no quedan en logs públicos como los de GitHub Actions.
 import { randomBytes } from 'node:crypto';
+import { writeFileSync } from 'node:fs';
 
 const url = process.argv[2] ?? 'wss://signal.chaski.me/ws';
 const origin = process.argv[3] ?? 'https://chaski.me';
@@ -77,10 +80,15 @@ try {
 
   if (ja.turn) {
     ok(`El servidor entrega credenciales TURN (ttl ${ja.turn.ttl} s)`);
-    console.log('\nPara Trickle ICE (https://webrtc.github.io/samples/src/content/peerconnection/trickle-ice/):');
-    for (const u of ja.turn.urls) console.log(`  URI: ${u}`);
-    console.log(`  username:   ${ja.turn.username}`);
-    console.log(`  credential: ${ja.turn.credential}`);
+    if (process.env.TURN_OUT) {
+      writeFileSync(process.env.TURN_OUT, JSON.stringify(ja.turn), { mode: 0o600 });
+      ok(`Credenciales guardadas en ${process.env.TURN_OUT}`);
+    } else {
+      console.log('\nPara Trickle ICE (https://webrtc.github.io/samples/src/content/peerconnection/trickle-ice/):');
+      for (const u of ja.turn.urls) console.log(`  URI: ${u}`);
+      console.log(`  username:   ${ja.turn.username}`);
+      console.log(`  credential: ${ja.turn.credential}`);
+    }
   } else {
     console.log('AVISO joined no trae "turn": revisa TURN_SECRET y TURN_URLS en la señalización');
     process.exitCode = 1;

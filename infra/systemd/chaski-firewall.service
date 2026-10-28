@@ -1,0 +1,16 @@
+# Filtro del 8443 (solo Cloudflare) en la cadena DOCKER-USER. Ver infra/scripts/firewall-8443.sh.
+# Corre después de Docker (al arrancar la VM DOCKER-USER empieza vacía), se repite si Docker se reinicia
+# (PartOf) y una vez por semana con chaski-firewall.timer para traer rangos nuevos de Cloudflare.
+[Unit]
+Description=Chaski: puerto 8443 solo desde Cloudflare
+After=docker.service network-online.target
+Wants=network-online.target
+Requires=docker.service
+PartOf=docker.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/chaski-firewall-8443
+
+[Install]
+WantedBy=docker.service
