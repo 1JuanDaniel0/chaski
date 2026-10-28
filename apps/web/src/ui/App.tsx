@@ -6,6 +6,7 @@ import type { Route } from '../signaling/messages';
 import { Logo, LogoMark } from './brand/Logo';
 import { PairScreen } from './screens/PairScreen';
 import { ScanScreen } from './screens/ScanScreen';
+import { CodeScreen } from './screens/CodeScreen';
 import { Thread, download } from './chat/Thread';
 import { useLeaveGuard, useWakeLock } from './hooks';
 import { Composer, coarse } from './chat/Composer';
@@ -18,6 +19,7 @@ import { NEXT_THEME, THEME_LABEL, getThemePref, setThemePref } from './theme';
 type Stage = 'pair' | 'chat';
 const STAGE: Record<Phase, Stage> = {
   scan: 'pair',
+  code: 'pair',
   starting: 'pair',
   waiting: 'pair',
   connecting: 'pair',
@@ -70,7 +72,7 @@ export function App() {
   }, [ctl]);
 
   // La sección estática de index.html (qué es Chaski y preguntas frecuentes) solo va debajo del QR.
-  const showInfo = stage === 'pair' && v.phase !== 'scan';
+  const showInfo = stage === 'pair' && v.phase !== 'scan' && v.phase !== 'code';
   useEffect(() => {
     const info = document.getElementById('info');
     if (info) info.hidden = !showInfo;
@@ -161,10 +163,14 @@ export function App() {
           {stage === 'pair' ? (
             <m.div key="pair" variants={screen} initial="hidden" animate="show" exit="exit" className="mx-auto flex w-full max-w-[1296px] flex-1 flex-col overflow-y-auto px-4 sm:px-8">
               {v.phase === 'scan' ? (
-                <ScanScreen outbox={v.outbox} onScan={(secret) => ctl.join(secret)} onCancel={() => ctl.discardShare()} />
+                <ScanScreen outbox={v.outbox} onScan={(secret) => ctl.join(secret)} onCode={() => ctl.enterCode()} onCancel={() => ctl.discardShare()} />
+              ) : v.phase === 'code' ? (
+                <CodeScreen checking={v.codeChecking} error={v.codeError} onSubmit={(c) => ctl.submitCode(c)} onCancel={() => ctl.discardShare()} />
               ) : (
                 <PairScreen
                   shareUrl={v.phase === 'connecting' ? null : v.shareUrl}
+                  code={v.code}
+                  onCode={() => ctl.enterCode()}
                   error={v.phase === 'error' ? (v.error ?? 'No se pudo conectar') : null}
                   onRetry={() => ctl.retry()}
                   onScan={() => ctl.scan()}

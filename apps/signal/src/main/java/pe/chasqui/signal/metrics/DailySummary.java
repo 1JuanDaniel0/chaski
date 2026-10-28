@@ -38,6 +38,8 @@ public class DailySummary {
         day.put("salas_creadas", delta("chasqui.rooms.created", null));
         day.put("salas_emparejadas", delta("chasqui.rooms.paired", null));
         day.put("reconexiones", delta("chasqui.peers.resumed", null));
+        day.put("codigos_mostrados", delta("chasqui.codes.opened", null));
+        day.put("codigos_usados", delta("chasqui.codes.paired", null));
         for (String route : ROUTES) day.put("ruta_" + route, delta("chasqui.reports", route));
         return day;
     }

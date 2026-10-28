@@ -74,6 +74,8 @@ HKDF-SHA256 (WebCrypto), `salt` = 0 bytes, `ikm` = `s`:
 | `not-in-room`         | `signal`/`kick`/`report` antes de `join`, o `join` repetido   | No                 |
 | `unknown-peer`        | `signal.to` o `kick.peerId` no está en la sala                | No                 |
 | `forbidden`           | `kick` enviado por quien no es el primer dispositivo          | No                 |
+| `bad-code`            | `code-join` a un casillero que no existe, venció o ya se usó (§9) | Sí             |
+| `codes-busy`          | `code-open` sin casilleros libres (§9)                        | Sí                 |
 
 ### 3.4 Reglas del servidor
 
@@ -85,7 +87,8 @@ HKDF-SHA256 (WebCrypto), `salt` = 0 bytes, `ikm` = `s`:
   conserva su `peerId` y su rol de primer dispositivo, el socket viejo se cierra con el código `4001` (`replaced`)
   y el otro dispositivo no recibe `peer-left` ni `peer-joined`. Así vuelve a la sala un celular cuyo socket anterior
   quedó colgado (cambio de red) sin chocar con `room-full`. La comparación del token es de tiempo constante.
-- Códigos de cierre propios: `4000` sala expirada, `4001` socket reemplazado por el mismo dispositivo.
+- Códigos de cierre propios: `4000` sala o código vencido, `4001` socket reemplazado por el mismo dispositivo,
+  `4002` el otro lado del casillero se cerró (§9).
 
 ### 3.5 Reconexión (RF4)
 
@@ -186,6 +189,12 @@ Un solo `RTCDataChannel` con etiqueta `chasqui`, `ordered: true`, confiable, `bi
 | Sala sin segundo dispositivo            | 10 min  |
 | Sala inactiva (sin mensajes)            | 30 min  |
 | Vida de credenciales TURN               | 1 h     |
+| Casilleros de código (§9)               | 100     |
+| Código sin usar                         | 2 min   |
+| CPace terminado tras emparejar (§9)     | 30 s    |
+| Mensajes `pake` por lado                | 2       |
+
+`code-open` y `code-join` cuentan para el mismo límite por IP que `join`.
 
 La IP del cliente se toma de `CF-Connecting-IP` si existe (Cloudflare); si no, de la conexión.
 
@@ -205,3 +214,67 @@ Ambos lados DEBEN reproducirlo en sus pruebas.
 | `s` (base64url)      | `AAECAwQFBgcICQoLDA0ODw`                                           |
 | `roomId` (base64url) | `4BZEvLZec_lQv2QMaGIN6A`                                           |
 | `k_sig` (hex)        | `7645b7cb1c5e8c4bb08ccb57eba36686376217fe6a947992a20f36da69f0a31c` |
+
+## 9. Emparejar por código (RF6)
+
+Para cuando no hay cámara a mano o se pasa de PC a PC. La PC muestra, junto al QR, un código de 6 dígitos que
+otro dispositivo escribe. El código no reemplaza al secreto `s`: solo sirve para entregarlo de forma segura, y
+desde ahí todo sigue igual que tras escanear el QR (§2 a §5).
+
+### 9.1 El código
+
+- `código = casillero (2 dígitos) || PIN (4 dígitos)`, por ejemplo `42` y `7193`, que se muestra `427 193`.
+- El **casillero** lo asigna el servidor, al azar entre los libres. Solo sirve para que el otro encuentre a la PC.
+- El **PIN** lo genera la PC (uniforme, con `crypto.getRandomValues`) y NUNCA se envía al servidor.
+- Un código sirve una sola vez. Un PIN equivocado lo quema y la PC muestra otro.
+
+### 9.2 Mensajes
+
+Van por un WebSocket aparte, en la misma URL y con la misma validación de `Origin` que las salas. Ese socket no
+puede hacer `join`, y un socket que ya está en una sala no puede usar códigos (`not-in-room`).
+
+```jsonc
+// cliente → servidor
+{ "type": "code-open", "v": 1 }                  // la PC pide un casillero
+{ "type": "code-join", "v": 1, "slot": "42" }    // quien escribió el código entra al casillero
+{ "type": "pake", "data": "<base64url, máx. 512 caracteres>" }
+
+// servidor → cliente
+{ "type": "code", "slot": "42", "ttl": 120 }     // a la PC: casillero asignado y segundos de vigencia
+{ "type": "code-paired", "sid": "<base64url(16 bytes)>" }  // a los dos, con el mismo sid
+{ "type": "pake", "data": "<base64url>" }        // reenviado sin cambios al otro lado
+```
+
+- El servidor solo reenvía `pake`, como mucho 2 por lado; NUNCA lo interpreta ni lo registra.
+- Si cualquiera de los dos cierra su socket, el servidor cierra el otro con `4002` y libera el casillero.
+- Un casillero sin usar vence a los 2 min y uno emparejado a los 30 s (cierre `4000`). Mientras siga esperando, la
+  PC pide otro código.
+
+### 9.3 CPace
+
+Suite `CPACE-RISTRETTO255-SHA512` de [draft-irtf-cfrg-cpace](https://datatracker.ietf.org/doc/draft-irtf-cfrg-cpace/)
+(probada con los vectores de la revisión 21), modo iniciador-respondedor. La PC es el iniciador (A).
+
+| Entrada | Valor |
+|---------|-------|
+| `PRS`   | El PIN en UTF-8, por ejemplo `7193` |
+| `CI`    | `chaski/code/v1\|<casillero>` en UTF-8 |
+| `sid`   | El de `code-paired` |
+| `ADa`, `ADb` | Vacíos |
+
+Los tres mensajes `pake`, en este orden:
+
+1. A → B: `Ya` (32 bytes).
+2. B → A: `Yb || Tb` (32 + 64 bytes).
+3. A → B: `Ta || iv || AES-GCM(k_code, iv, s, aad)` (64 + 12 + 16 + 16 bytes).
+
+- `ISK`, `Ta` y `Tb` según el borrador (`mac_key = SHA-512("CPaceMac" || sid || ISK)`,
+  `Tx = HMAC-SHA-512(mac_key, lv_cat(Yx, ADx))`).
+- `k_code = HKDF-SHA256(ikm = ISK, salt = 0 bytes, info = "chaski/code/key/v1")`, 32 bytes; `aad = CI`.
+- Cada lado DEBE rechazar un `Y` que no sea una codificación canónica o que dé el neutro.
+- A DEBE comprobar `Tb` antes de enviar el mensaje 3. Si no coincide, cierra el socket, no envía nada y avisa
+  "alguien escribió un código incorrecto". B DEBE comprobar `Ta` y el descifrado; si fallan, descarta todo.
+- Con `s` en la mano, B cierra el socket del código y hace `join` como si hubiera escaneado el QR.
+
+Quien no conoce el PIN (incluido el servidor) solo puede probar un PIN por código, en vivo: acierta con
+probabilidad 1 en 10.000 y, si falla, la PC se entera y cambia el código.

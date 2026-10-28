@@ -16,4 +16,13 @@ public sealed interface ClientMessage {
     record Report(String route, long ms) implements ClientMessage {}
 
     record Ping() implements ClientMessage {}
+
+    /** Pide un casillero para mostrar un código (protocolo §9). */
+    record CodeOpen() implements ClientMessage {}
+
+    /** Entra al casillero de un código escrito; {@code slot} son sus dos primeros dígitos. */
+    record CodeJoin(String slot) implements ClientMessage {}
+
+    /** Mensaje de CPace para el otro lado del casillero; el servidor no lo interpreta. */
+    record Pake(String data) implements ClientMessage {}
 }

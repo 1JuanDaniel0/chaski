@@ -11,7 +11,9 @@ public enum ErrorCode {
     RATE_LIMITED("rate-limited", CloseStatus.POLICY_VIOLATION),
     NOT_IN_ROOM("not-in-room", null),
     UNKNOWN_PEER("unknown-peer", null),
-    FORBIDDEN("forbidden", null);
+    FORBIDDEN("forbidden", null),
+    BAD_CODE("bad-code", CloseStatus.POLICY_VIOLATION),
+    CODES_BUSY("codes-busy", CloseStatus.POLICY_VIOLATION);
 
     private final String code;
     private final CloseStatus closeStatus;

@@ -17,7 +17,7 @@ import pe.chasqui.signal.config.ChasquiProperties;
 class TurnCredentialsTest {
     private static TurnCredentials make(String secret, List<String> urls) {
         var props = new ChasquiProperties(List.of(), 65536, 2, 10, 20, null, null, 1000,
-                new ChasquiProperties.Turn(secret, urls, 3600, 2));
+                new ChasquiProperties.Turn(secret, urls, 3600, 2), null);
         return new TurnCredentials(props, Clock.fixed(Instant.ofEpochSecond(1_700_000_000L), ZoneOffset.UTC));
     }
 

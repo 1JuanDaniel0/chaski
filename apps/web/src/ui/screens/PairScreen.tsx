@@ -1,5 +1,5 @@
 import { AnimatePresence, m } from 'motion/react';
-import { ArrowClockwise, LockSimple, PlayCircle, Scan } from '@phosphor-icons/react';
+import { ArrowClockwise, Keyboard, LockSimple, PlayCircle, Scan } from '@phosphor-icons/react';
 import { coarse } from '../chat/Composer';
 import { QrCode } from '../QrCode';
 import { LogoMark } from '../brand/Logo';
@@ -20,12 +20,16 @@ const canScan = canScanHere();
 /** PC esperando: un título que dice qué hacer, tres pasos y el QR grande. */
 export function PairScreen({
   shareUrl,
+  code,
   error,
   onRetry,
   onScan,
+  onCode,
   onTutorial,
 }: {
   shareUrl: string | null;
+  code: string | null;
+  onCode: () => void;
   error: string | null;
   onRetry: () => void;
   onScan: () => void;
@@ -74,10 +78,16 @@ export function PairScreen({
             Escanear el QR de la PC
           </button>
         )}
-        <button type="button" onClick={onTutorial} className="press inline-flex w-fit items-center gap-2 text-[16px] font-semibold text-brand">
-          <PlayCircle size={22} weight="fill" aria-hidden="true" />
-          Ver cómo funciona
-        </button>
+        <div className="flex flex-wrap items-center gap-x-8 gap-y-4">
+          <button type="button" onClick={onTutorial} className="press inline-flex w-fit items-center gap-2 text-[16px] font-semibold text-brand">
+            <PlayCircle size={22} weight="fill" aria-hidden="true" />
+            Ver cómo funciona
+          </button>
+          <button type="button" onClick={onCode} className="press inline-flex w-fit items-center gap-2 text-[16px] font-semibold text-brand">
+            <Keyboard size={22} weight="fill" aria-hidden="true" />
+            Tengo un código
+          </button>
+        </div>
       </m.section>
 
       <m.section variants={rise} className="flex flex-col items-center gap-5">
@@ -97,6 +107,23 @@ export function PairScreen({
           <span className="live-dot text-brand" aria-hidden="true" />
           Esperando a tu celular
         </p>
+        <AnimatePresence initial={false}>
+          {code && (
+            <m.p
+              key={code}
+              initial={{ opacity: 0, y: 4 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0 }}
+              transition={fast}
+              className="text-center text-[15px] text-muted"
+            >
+              ¿Sin cámara o desde otra PC? Escribe el código
+              <span className="mt-1 block text-[32px] font-semibold tracking-[0.12em] text-ink tabular-nums" aria-label={`Código ${code.split('').join(' ')}`}>
+                {code}
+              </span>
+            </m.p>
+          )}
+        </AnimatePresence>
         <p className="flex items-center gap-2 text-[14px] text-muted md:hidden">
           <LockSimple size={15} aria-hidden="true" />
           Cifrado de extremo a extremo

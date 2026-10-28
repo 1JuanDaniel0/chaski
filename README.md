@@ -28,7 +28,7 @@ Los **chasquis** eran los mensajeros del Imperio Inca: corrían por el Qhapaq Ñ
 ## Cómo se usa
 
 1. En la PC abres [chaski.me](https://chaski.me). El QR aparece al instante.
-2. Escaneas el QR con la cámara del celular y se abre la web.
+2. Escaneas el QR con la cámara del celular y se abre la web. Sin cámara, o de PC a PC: en la otra pantalla pulsas "Tengo un código" y escribes el código de 6 dígitos que aparece debajo del QR.
 3. Ambos se conectan solos y muestran "Conectado".
 4. En el celular eliges archivos o escribes texto (también funciona al revés).
 5. En la PC aparece cada envío con su progreso y un botón para descargar o copiar. Al cerrar la pestaña, la sala desaparece.
@@ -76,6 +76,7 @@ La línea gruesa es el camino normal de los datos. Las punteadas solo se usan cu
 
 - **Protocolo propio sobre WebRTC** ([docs/protocol.md](docs/protocol.md)): el secreto del QR vive en el fragmento de la URL, y de él salen con HKDF la sala y la clave AES-GCM que cifra la señalización.
 - **Reconexión sin reescanear** (RF4): token de reanudación, reinicio de ICE y huella DTLS fijada; una transferencia sobrevive al cambio de wifi a datos móviles.
+- **Código de 6 dígitos con un PAKE** (RF6, [ADR 0007](docs/adr/0007-codigo-corto-cpace.md)): CPace sobre ristretto255 entrega el secreto del QR sin que el servidor pueda adivinar el código; probado con los vectores oficiales del borrador del IRTF.
 - **Control de flujo para el relevo TURN** ([ADR 0006](docs/adr/0006-relevo-sin-tope-y-costo.md)): ventana de envío con acuses (`file-ack`) que mide el RTT y frena antes de que se llene la cola, diagnosticada con volcados de `webrtc-internals` de producción.
 - **Archivos grandes sin agotar la RAM**: el receptor arma el archivo por tramos de 8 MB.
 - **Costo acotado**: credenciales TURN temporales con límite por IP, máximo de sesiones y un tope mensual de salida que apaga el relevo.
@@ -141,7 +142,7 @@ chaski/
 |------|------------|
 | **MVP** ✅ | RF1 emparejar por QR, RF2 archivos en ambos sentidos (varios, con progreso y cancelación), RF3 texto con copiado en un toque |
 | **Fase 2** ✅ | RF5 menú Compartir de Android (share target), RF4 reconexión automática, archivos grandes armados por tramos (hasta 500 MB, el límite de los Blobs del navegador) |
-| **Fase 3** (pospuesta) | RF6 emparejar con código corto (PAKE), RF7 modo mostrador (QR fijo para un negocio que solo recibe) |
+| **Fase 3** | RF6 emparejar con código corto de 6 dígitos (CPace) ✅, RF7 modo mostrador (QR fijo para un negocio que solo recibe; espera a un negocio piloto) |
 
 **Ideas en evaluación** (se deciden según lo que pidan los usuarios):
 

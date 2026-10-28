@@ -20,7 +20,17 @@ declare global {
 type Cam = 'starting' | 'on' | 'denied' | 'unsupported';
 
 /** Celular que llegó con "Compartir con Chaski": lo que se enviará y el escáner del QR de la PC. */
-export function ScanScreen({ outbox, onScan, onCancel }: { outbox: Shared | null; onScan: (s: Uint8Array<ArrayBuffer>) => void; onCancel: () => void }) {
+export function ScanScreen({
+  outbox,
+  onScan,
+  onCode,
+  onCancel,
+}: {
+  outbox: Shared | null;
+  onScan: (s: Uint8Array<ArrayBuffer>) => void;
+  onCode: () => void;
+  onCancel: () => void;
+}) {
   const video = useRef<HTMLVideoElement>(null);
   const [cam, setCam] = useState<Cam>('starting');
   const [foreign, setForeign] = useState(false);
@@ -119,9 +129,14 @@ export function ScanScreen({ outbox, onScan, onCancel }: { outbox: Shared | null
         {foreign ? 'Ese QR no es de Chaski' : 'Apunta al QR de chaski.me en la PC'}
       </m.p>
 
-      <m.button variants={rise} type="button" onClick={onCancel} className="press mx-auto h-11 rounded-full px-5 text-[15px] font-semibold text-muted">
-        Cancelar
-      </m.button>
+      <m.div variants={rise} className="flex justify-center gap-2">
+        <button type="button" onClick={onCode} className="press h-11 rounded-full px-5 text-[15px] font-semibold text-brand">
+          Escribir un código
+        </button>
+        <button type="button" onClick={onCancel} className="press h-11 rounded-full px-5 text-[15px] font-semibold text-muted">
+          Cancelar
+        </button>
+      </m.div>
     </m.div>
   );
 }
